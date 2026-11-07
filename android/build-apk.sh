@@ -41,8 +41,8 @@ mapfile -t CLASS_FILES < <(find "$BUILD_DIR/classes" -name '*.class' -print)
 cd "$BUILD_DIR"
 cp unsigned.apk unsigned-with-assets.apk
 jar uf unsigned-with-assets.apk -C dex classes.dex
-cd "$ASSETS_DIR"
-jar uf "$BUILD_DIR/unsigned-with-assets.apk" -C "$ASSETS_DIR" .
+cd "$ANDROID_DIR/src/main"
+jar uf "$BUILD_DIR/unsigned-with-assets.apk" assets
 cd "$BUILD_DIR"
 "$BUILD_TOOLS/zipalign" -f 4 unsigned-with-assets.apk aligned.apk
 
