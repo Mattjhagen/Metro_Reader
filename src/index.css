@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --wp-accent: #1ba1e2; /* Windows Phone Cyan Default */
+    --wp-bg: #000000;
+    --wp-surface: #111111;
+    --wp-surface-hover: #1f1f1f;
+  }
+
+  body {
+    font-family: "Segoe UI", "Segoe WP", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    background-color: #000000;
+    color: #ffffff;
+    -webkit-tap-highlight-color: transparent;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Sharp corners rule for authentic Windows Phone Metro UI */
+  button, input, select, textarea {
+    font-family: inherit;
+  }
+}
+
+/* Hide scrollbars for clean Metro panorama feel while remaining scrollable */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Metro live tile flip and tilt press effect */
+.metro-tilt {
+  transition: transform 0.1s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.1s ease;
+}
+.metro-tilt:active {
+  transform: scale(0.97) perspective(600px) rotateX(1deg);
+  opacity: 0.85;
+}
+
+/* Metro circular app-bar button */
+.metro-circle-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  border: 2px solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  background: transparent;
+  color: #ffffff;
+}
+.metro-circle-btn:hover {
+  background-color: #ffffff;
+  color: #000000;
+}
+.metro-circle-btn:active {
+  transform: scale(0.92);
+  background-color: var(--wp-accent);
+  border-color: var(--wp-accent);
+  color: #ffffff;
+}
+
+/* Metro text-kicker uppercase */
+.metro-kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #a0a0a0;
+}
+
+/* Metro giant pivot title */
+.metro-pivot-title {
+  font-size: clamp(2.5rem, 7vw, 4.25rem);
+  font-weight: 200;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  text-transform: lowercase;
+}

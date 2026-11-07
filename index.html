@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en" class="dark bg-black">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>AudioBookify - Metro Audiobook Studio</title>
+    <meta name="description" content="Turn any book format (PDF, EPUB, DOCX, TXT, MD) into audiobooks with ElevenLabs. Windows Phone Metro UI PWA." />
+    
+    <!-- PWA / Mobile Capable -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AudioBookify" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+
+    <!-- OpenGraph / Social -->
+    <meta property="og:title" content="AudioBookify - Metro Audiobook Studio" />
+    <meta property="og:description" content="Turn any book format into audiobooks with ElevenLabs and Windows Phone Metro UI." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Google Fonts for authentic Segoe WP / Metro UI geometric look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,300&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-black text-white antialiased selection:bg-[#1ba1e2] selection:text-white min-h-screen">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
