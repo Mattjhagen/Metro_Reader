@@ -4,9 +4,19 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Book, AppSettings, MetroPivot } from './types';
-import { loadBooks, saveBooks, loadSettings, saveSettings, DEFAULT_SETTINGS } from './utils/db';
+import { Book, AppSettings, MetroPivot, Bookmark } from './types';
+import {
+  loadBooks,
+  saveBooks,
+  loadSettings,
+  saveSettings,
+  DEFAULT_SETTINGS,
+  saveBookProgress,
+  addBookmarkToBook,
+  removeBookmarkFromBook,
+} from './utils/db';
 import { parseBookFile } from './utils/documentParser';
+import { downloadCompleteAudiobookMp3, downloadAudiobookZip } from './utils/audioExporter';
 import { MetroStatusBar } from './components/MetroStatusBar';
 import { MetroPivotHeader } from './components/MetroPivotHeader';
 import { MetroAppBar } from './components/MetroAppBar';
@@ -15,6 +25,8 @@ import { ConverterPivot } from './components/ConverterPivot';
 import { NowPlayingPivot } from './components/NowPlayingPivot';
 import { SettingsPivot } from './components/SettingsPivot';
 import { PWAInstallModal } from './components/PWAInstallModal';
+import { GoogleDriveImportModal } from './components/GoogleDriveImportModal';
+import { AndroidApkModal } from './components/AndroidApkModal';
 
 export default function App() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -28,12 +40,14 @@ export default function App() {
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const lastSavedTimeRef = useRef<number>(0);
 
   // Modals & Notices
   const [isInstallModalOpen, setIsInstallModalOpen] = useState<boolean>(false);
+  const [isDriveModalOpen, setIsDriveModalOpen] = useState<boolean>(false);
+  const [isAndroidApkModalOpen, setIsAndroidApkModalOpen] = useState<boolean>(false);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
 
-  // Hidden file input for global upload triggers
   const globalFileInputRef = useRef<HTMLInputElement>(null);
 
   // 1. Initial Load from IndexedDB
@@ -46,10 +60,20 @@ export default function App() {
           loadSettings(),
         ]);
         if (isMounted) {
+          // Check if ELEVENLABS_API_KEY is available in environment
+          const envKey = (typeof process !== 'undefined' && process.env?.ELEVENLABS_API_KEY) || '';
+          if (envKey && !savedSettings.elevenLabsApiKey) {
+            savedSettings.elevenLabsApiKey = envKey;
+            await saveSettings(savedSettings);
+          }
+
           setBooks(savedBooks);
           setSettings(savedSettings);
           if (savedBooks.length > 0) {
             setActiveBookId(savedBooks[0].id);
+            if (savedBooks[0].playbackPosition > 0) {
+              setCurrentTime(savedBooks[0].playbackPosition);
+            }
           }
         }
       } catch (err) {
@@ -65,7 +89,6 @@ export default function App() {
     };
   }, []);
 
-  // Sync books to IndexedDB when modified
   const handleUpdateBooks = async (updatedBooks: Book[]) => {
     setBooks(updatedBooks);
     await saveBooks(updatedBooks);
@@ -91,8 +114,9 @@ export default function App() {
     if (currentChapter?.audioUrl) {
       if (audio.src !== currentChapter.audioUrl) {
         audio.src = currentChapter.audioUrl;
-        audio.currentTime = 0;
-        setCurrentTime(0);
+        const initialPos = activeBook?.playbackPosition || 0;
+        audio.currentTime = initialPos;
+        setCurrentTime(initialPos);
       }
     } else {
       audio.src = '';
@@ -109,7 +133,7 @@ export default function App() {
     }
   }, [settings.playbackSpeed]);
 
-  // Native iOS / Android MediaSession Lock-Screen Controls
+  // MediaSession Lock-Screen Controls
   useEffect(() => {
     if ('mediaSession' in navigator && activeBook && currentChapter) {
       navigator.mediaSession.metadata = new MediaMetadata({
@@ -121,18 +145,10 @@ export default function App() {
           : [{ src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png' }],
       });
 
-      navigator.mediaSession.setActionHandler('play', () => {
-        handleTogglePlay();
-      });
-      navigator.mediaSession.setActionHandler('pause', () => {
-        handleTogglePlay();
-      });
-      navigator.mediaSession.setActionHandler('seekbackward', () => {
-        handleSkipSeconds(-15);
-      });
-      navigator.mediaSession.setActionHandler('seekforward', () => {
-        handleSkipSeconds(30);
-      });
+      navigator.mediaSession.setActionHandler('play', () => handleTogglePlay());
+      navigator.mediaSession.setActionHandler('pause', () => handleTogglePlay());
+      navigator.mediaSession.setActionHandler('seekbackward', () => handleSkipSeconds(-15));
+      navigator.mediaSession.setActionHandler('seekforward', () => handleSkipSeconds(30));
       navigator.mediaSession.setActionHandler('previoustrack', () => {
         if (activeBook.currentChapterIndex > 0) {
           handleSelectChapter(activeBook.currentChapterIndex - 1);
@@ -146,28 +162,22 @@ export default function App() {
     }
   }, [activeBook, currentChapter]);
 
-  // Sleep Timer Countdown
-  useEffect(() => {
-    if (!settings.sleepTimerMinutes || !isPlaying) return;
+  // Periodic Progress Saving into IndexedDB
+  const handleTrackTime = (time: number) => {
+    setCurrentTime(time);
+    // Throttle progress persistence to every 3 seconds to preserve performance
+    if (activeBook && Math.abs(time - lastSavedTimeRef.current) > 3) {
+      lastSavedTimeRef.current = time;
+      saveBookProgress(activeBook.id, activeBook.currentChapterIndex, time);
+    }
+  };
 
-    const timer = setTimeout(() => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      }
-      handleUpdateSettings({ sleepTimerMinutes: null });
-    }, settings.sleepTimerMinutes * 60 * 1000);
-
-    return () => clearTimeout(timer);
-  }, [settings.sleepTimerMinutes, isPlaying]);
-
-  // Audio Event Handlers
+  // Audio Handlers
   const handleTogglePlay = () => {
     const audio = audioRef.current;
     if (!audio) return;
 
     if (!currentChapter?.audioUrl) {
-      // If chapter isn't converted yet, route user to converter
       setCurrentPivot('converter');
       return;
     }
@@ -175,6 +185,9 @@ export default function App() {
     if (isPlaying) {
       audio.pause();
       setIsPlaying(false);
+      if (activeBook) {
+        saveBookProgress(activeBook.id, activeBook.currentChapterIndex, audio.currentTime);
+      }
     } else {
       audio
         .play()
@@ -190,17 +203,20 @@ export default function App() {
     if (audioRef.current) {
       audioRef.current.currentTime = seconds;
       setCurrentTime(seconds);
+      if (activeBook) {
+        saveBookProgress(activeBook.id, activeBook.currentChapterIndex, seconds);
+      }
     }
   };
 
   const handleSkipSeconds = (seconds: number) => {
     if (audioRef.current) {
-      const nextTime = Math.max(
-        0,
-        Math.min(duration, audioRef.current.currentTime + seconds)
-      );
+      const nextTime = Math.max(0, Math.min(duration, audioRef.current.currentTime + seconds));
       audioRef.current.currentTime = nextTime;
       setCurrentTime(nextTime);
+      if (activeBook) {
+        saveBookProgress(activeBook.id, activeBook.currentChapterIndex, nextTime);
+      }
     }
   };
 
@@ -209,6 +225,7 @@ export default function App() {
     const updatedBook: Book = {
       ...activeBook,
       currentChapterIndex: chapterIndex,
+      playbackPosition: 0,
       lastPlayedAt: Date.now(),
     };
     const updatedBooks = books.map((b) => (b.id === activeBook.id ? updatedBook : b));
@@ -241,11 +258,43 @@ export default function App() {
     }
   };
 
-  // Upload book in any format
+  // Bookmark Management
+  const handleAddBookmark = async (chapterIndex: number, timestamp: number, note?: string) => {
+    if (!activeBook) return;
+    await addBookmarkToBook(activeBook.id, chapterIndex, timestamp, note);
+    const updated = await loadBooks();
+    setBooks(updated);
+    setUploadNotice(`Saved bookmark at chapter ${chapterIndex + 1}!`);
+    setTimeout(() => setUploadNotice(null), 2500);
+  };
+
+  const handleRemoveBookmark = async (bookmarkId: string) => {
+    if (!activeBook) return;
+    await removeBookmarkFromBook(activeBook.id, bookmarkId);
+    const updated = await loadBooks();
+    setBooks(updated);
+  };
+
+  const handleJumpToBookmark = (chapterIndex: number, timestamp: number) => {
+    if (!activeBook) return;
+    if (activeBook.currentChapterIndex !== chapterIndex) {
+      handleSelectChapter(chapterIndex);
+    }
+    setTimeout(() => {
+      handleSeek(timestamp);
+      if (audioRef.current && activeBook.chapters[chapterIndex]?.audioUrl) {
+        audioRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+      }
+    }, 100);
+  };
+
+  // Upload book file (local or Google Drive)
   const handleFileUpload = async (file: File) => {
     setUploadNotice(`Parsing ${file.name}...`);
     try {
       const newBook = await parseBookFile(file);
+      newBook.bookmarks = [];
+      newBook.progressPercent = 0;
       const updatedBooks = [newBook, ...books];
       await handleUpdateBooks(updatedBooks);
       setActiveBookId(newBook.id);
@@ -269,7 +318,6 @@ export default function App() {
   };
 
   const handleResetSampleBooks = async () => {
-    // Clear storage and reload default samples
     localStorage.clear();
     const { loadBooks: reinitBooks } = await import('./utils/db');
     const reset = await reinitBooks();
@@ -279,31 +327,31 @@ export default function App() {
     setTimeout(() => setUploadNotice(null), 2500);
   };
 
-  const handleDownloadCurrentAudio = () => {
-    if (!currentChapter?.audioUrl) return;
-    const a = document.createElement('a');
-    a.href = currentChapter.audioUrl;
-    a.download = `${activeBook?.title || 'audiobook'}_${currentChapter.title}.mp3`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const handleDownloadFullMp3 = async () => {
+    if (!activeBook) return;
+    await downloadCompleteAudiobookMp3(activeBook);
+  };
+
+  const handleDownloadZip = async () => {
+    if (!activeBook) return;
+    await downloadAudiobookZip(activeBook);
   };
 
   return (
     <div
-      className="min-h-screen bg-black text-white flex flex-col justify-between selection:bg-[#1ba1e2] selection:text-white"
+      className="min-h-screen bg-black text-white flex flex-col justify-between selection:bg-[#00e5ff] selection:text-black"
       style={
         {
           '--wp-accent': settings.accentColor,
         } as React.CSSProperties
       }
     >
-      {/* Hidden global audio element */}
+      {/* Audio Element */}
       <audio
         ref={audioRef}
         onTimeUpdate={() => {
           if (audioRef.current) {
-            setCurrentTime(audioRef.current.currentTime);
+            handleTrackTime(audioRef.current.currentTime);
           }
         }}
         onDurationChange={() => {
@@ -328,7 +376,7 @@ export default function App() {
         }}
       />
 
-      {/* Hidden file input for AppBar upload triggers */}
+      {/* Hidden file input */}
       <input
         ref={globalFileInputRef}
         type="file"
@@ -343,23 +391,23 @@ export default function App() {
         className="hidden"
       />
 
-      {/* 1. TOP STATUS BAR (Windows Phone 12:38, WiFi, Battery) */}
+      {/* 1. STATUS BAR */}
       <MetroStatusBar accentColor={settings.accentColor} />
 
-      {/* Upload Notification Toast */}
+      {/* Notification Toast */}
       {uploadNotice && (
         <div
-          className="w-full text-white px-4 py-2 text-xs font-semibold uppercase tracking-wider flex items-center justify-between animate-in slide-in-from-top duration-200"
+          className="w-full text-black px-4 py-2 text-xs font-semibold uppercase tracking-wider flex items-center justify-between animate-in slide-in-from-top duration-200"
           style={{ backgroundColor: settings.accentColor }}
         >
           <span>{uploadNotice}</span>
-          <button onClick={() => setUploadNotice(null)} className="text-white hover:underline">
+          <button onClick={() => setUploadNotice(null)} className="text-black font-bold hover:underline">
             ✕
           </button>
         </div>
       )}
 
-      {/* 2. METRO PIVOT HEADER (Category kicker & Bleed Titles) */}
+      {/* 2. METRO PIVOT HEADER */}
       <MetroPivotHeader
         currentPivot={currentPivot}
         onSelectPivot={(pivot) => setCurrentPivot(pivot)}
@@ -375,7 +423,7 @@ export default function App() {
               style={{ borderColor: settings.accentColor, borderTopColor: 'transparent' }}
             />
             <p className="text-xs uppercase tracking-widest text-neutral-400">
-              Loading AudioBookify Metro...
+              Loading Metro Reader...
             </p>
           </div>
         ) : (
@@ -428,6 +476,9 @@ export default function App() {
                 onSeek={handleSeek}
                 onSkipSeconds={handleSkipSeconds}
                 onSelectChapter={handleSelectChapter}
+                onAddBookmark={handleAddBookmark}
+                onRemoveBookmark={handleRemoveBookmark}
+                onJumpToBookmark={handleJumpToBookmark}
                 settings={settings}
                 onUpdateSettings={handleUpdateSettings}
                 onNavigateToConvert={() => setCurrentPivot('converter')}
@@ -439,6 +490,8 @@ export default function App() {
                 settings={settings}
                 onUpdateSettings={handleUpdateSettings}
                 onOpenInstallModal={() => setIsInstallModalOpen(true)}
+                onOpenGoogleDrive={() => setIsDriveModalOpen(true)}
+                onOpenAndroidApk={() => setIsAndroidApkModalOpen(true)}
                 onResetSampleBooks={handleResetSampleBooks}
               />
             )}
@@ -453,18 +506,40 @@ export default function App() {
         isPlaying={isPlaying}
         onTogglePlay={handleTogglePlay}
         onOpenUpload={() => globalFileInputRef.current?.click()}
+        onOpenGoogleDrive={() => setIsDriveModalOpen(true)}
         onOpenInstall={() => setIsInstallModalOpen(true)}
-        onDownloadCurrentAudio={
-          currentChapter?.isConverted ? handleDownloadCurrentAudio : undefined
+        onOpenAndroidApk={() => setIsAndroidApkModalOpen(true)}
+        onDownloadFullMp3={
+          activeBook?.chapters.some((ch) => ch.isConverted)
+            ? handleDownloadFullMp3
+            : undefined
+        }
+        onDownloadZip={
+          activeBook?.chapters.some((ch) => ch.isConverted)
+            ? handleDownloadZip
+            : undefined
         }
         onResetLibrary={handleResetSampleBooks}
         accentColor={settings.accentColor}
       />
 
-      {/* 5. PWA INSTALL MODAL */}
+      {/* 5. MODALS */}
       <PWAInstallModal
         isOpen={isInstallModalOpen}
         onClose={() => setIsInstallModalOpen(false)}
+        accentColor={settings.accentColor}
+      />
+
+      <GoogleDriveImportModal
+        isOpen={isDriveModalOpen}
+        onClose={() => setIsDriveModalOpen(false)}
+        onImportBookFile={handleFileUpload}
+        accentColor={settings.accentColor}
+      />
+
+      <AndroidApkModal
+        isOpen={isAndroidApkModalOpen}
+        onClose={() => setIsAndroidApkModalOpen(false)}
         accentColor={settings.accentColor}
       />
     </div>

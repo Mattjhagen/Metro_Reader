@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
 import { AppSettings } from '../types';
 import { fetchSubscriptionDetails } from '../utils/elevenLabsApi';
-import { Key, Palette, HardDrive, Smartphone, Check, AlertCircle, RefreshCw, Sparkles, ExternalLink } from 'lucide-react';
+import { Key, Palette, HardDrive, Smartphone, Check, AlertCircle, RefreshCw, Sparkles, ExternalLink, Cloud, Download } from 'lucide-react';
 import { usePWAInstall } from '../hooks/usePWA';
+import { getDriveAccessToken } from '../utils/googleDrive';
 
 interface SettingsPivotProps {
   settings: AppSettings;
   onUpdateSettings: (newSettings: Partial<AppSettings>) => void;
   onOpenInstallModal: () => void;
+  onOpenGoogleDrive: () => void;
+  onOpenAndroidApk: () => void;
   onResetSampleBooks: () => void;
 }
 
 const WP_ACCENT_COLORS = [
-  { name: 'Cyan (Lumia)', hex: '#1ba1e2' },
+  { name: 'Cyan (Lumia)', hex: '#00e5ff' },
   { name: 'Magenta', hex: '#d80073' },
   { name: 'Mango', hex: '#f09609' },
   { name: 'Lime', hex: '#a4c400' },
@@ -28,6 +31,8 @@ export const SettingsPivot: React.FC<SettingsPivotProps> = ({
   settings,
   onUpdateSettings,
   onOpenInstallModal,
+  onOpenGoogleDrive,
+  onOpenAndroidApk,
   onResetSampleBooks,
 }) => {
   const [apiKeyInput, setApiKeyInput] = useState(settings.elevenLabsApiKey);
@@ -41,6 +46,7 @@ export const SettingsPivot: React.FC<SettingsPivotProps> = ({
   } | null>(null);
 
   const { isInstalled } = usePWAInstall();
+  const hasDriveToken = !!getDriveAccessToken();
 
   const handleSaveAndVerifyKey = async () => {
     const key = apiKeyInput.trim();
@@ -107,7 +113,7 @@ export const SettingsPivot: React.FC<SettingsPivotProps> = ({
           <button
             onClick={handleSaveAndVerifyKey}
             disabled={isVerifying}
-            className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-opacity disabled:opacity-50 shrink-0"
+            className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-black transition-opacity disabled:opacity-50 shrink-0"
             style={{ backgroundColor: settings.accentColor }}
           >
             {isVerifying ? 'Verifying...' : 'Save & Verify'}
@@ -140,7 +146,78 @@ export const SettingsPivot: React.FC<SettingsPivotProps> = ({
         )}
       </div>
 
-      {/* 2. WINDOWS PHONE ACCENT COLOR SELECTOR */}
+      {/* 2. GOOGLE DRIVE CLOUD IMPORT INTEGRATION */}
+      <div className="space-y-3">
+        <div className="text-[11px] font-bold tracking-widest uppercase text-neutral-400 border-b border-neutral-800 pb-1">
+          GOOGLE DRIVE INTEGRATION
+        </div>
+
+        <div className="p-4 bg-[#141414] border border-neutral-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Cloud className="w-5 h-5 text-cyan-400 shrink-0" />
+            <div>
+              <div className="text-sm font-semibold text-white">
+                {hasDriveToken ? 'Google Drive Connected' : 'Connect Google Drive'}
+              </div>
+              <div className="text-xs text-neutral-400 mt-0.5">
+                Import books and documents directly from your personal Drive
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onOpenGoogleDrive}
+            className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-black bg-white hover:bg-neutral-200 transition-colors shrink-0 ml-3"
+          >
+            {hasDriveToken ? 'Browse Drive' : 'Connect Drive'}
+          </button>
+        </div>
+      </div>
+
+      {/* 3. ANDROID APK & PWA PACKAGING */}
+      <div className="space-y-3">
+        <div className="text-[11px] font-bold tracking-widest uppercase text-neutral-400 border-b border-neutral-800 pb-1">
+          ANDROID APK & PWA APPS
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="p-4 bg-[#141414] border border-neutral-800 flex flex-col justify-between space-y-3">
+            <div>
+              <div className="text-sm font-semibold text-white">
+                Android APK Center
+              </div>
+              <div className="text-xs text-neutral-400 mt-1">
+                Install WebAPK or download the full Android Studio Gradle APK project.
+              </div>
+            </div>
+            <button
+              onClick={onOpenAndroidApk}
+              className="w-full py-2 text-xs font-bold uppercase tracking-wider text-black transition-opacity"
+              style={{ backgroundColor: settings.accentColor }}
+            >
+              Open APK Options
+            </button>
+          </div>
+
+          <div className="p-4 bg-[#141414] border border-neutral-800 flex flex-col justify-between space-y-3">
+            <div>
+              <div className="text-sm font-semibold text-white">
+                {isInstalled ? 'Installed as Standalone PWA' : 'Install to Home Screen'}
+              </div>
+              <div className="text-xs text-neutral-400 mt-1">
+                Install on iPhone/iPad (Safari) or Android Chrome.
+              </div>
+            </div>
+            <button
+              onClick={onOpenInstallModal}
+              className="w-full py-2 text-xs font-bold uppercase tracking-wider text-white border border-neutral-700 hover:border-white transition-colors"
+            >
+              PWA Guide
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. WINDOWS PHONE ACCENT COLOR SELECTOR */}
       <div className="space-y-3">
         <div className="text-[11px] font-bold tracking-widest uppercase text-neutral-400 border-b border-neutral-800 pb-1">
           METRO ACCENT COLOR
@@ -162,41 +239,17 @@ export const SettingsPivot: React.FC<SettingsPivotProps> = ({
                   borderColor: isSelected ? '#ffffff' : 'transparent',
                 }}
               >
-                <span className="text-xs font-bold text-white tracking-wide drop-shadow-sm">
+                <span className="text-xs font-bold text-black tracking-wide drop-shadow-sm">
                   {c.name}
                 </span>
-                {isSelected && <Check className="w-4 h-4 text-white stroke-[3]" />}
+                {isSelected && <Check className="w-4 h-4 text-black stroke-[3]" />}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* 3. PWA INSTALL & DEVICE SETUP */}
-      <div className="space-y-3">
-        <div className="text-[11px] font-bold tracking-widest uppercase text-neutral-400 border-b border-neutral-800 pb-1">
-          PROGRESSIVE WEB APP (IOS & ANDROID)
-        </div>
-
-        <div className="p-4 bg-[#141414] border border-neutral-800 flex items-center justify-between">
-          <div>
-            <div className="text-sm font-semibold text-white">
-              {isInstalled ? 'App is Running in Standalone PWA Mode' : 'Install to Phone Home Screen'}
-            </div>
-            <div className="text-xs text-neutral-400 mt-0.5">
-              Enables offline audio playback, lock screen media controls, and fullscreen experience.
-            </div>
-          </div>
-          <button
-            onClick={onOpenInstallModal}
-            className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-black bg-white hover:bg-neutral-200 transition-colors shrink-0 ml-3"
-          >
-            {isInstalled ? 'Install Guide' : 'Install App'}
-          </button>
-        </div>
-      </div>
-
-      {/* 4. STORAGE & CACHE MANAGEMENT */}
+      {/* 5. STORAGE & CACHE MANAGEMENT */}
       <div className="space-y-3">
         <div className="text-[11px] font-bold tracking-widest uppercase text-neutral-400 border-b border-neutral-800 pb-1">
           STORAGE & OFFLINE CACHE
@@ -219,15 +272,15 @@ export const SettingsPivot: React.FC<SettingsPivotProps> = ({
 
           <div className="pt-2 border-t border-neutral-900 flex items-center justify-between text-xs text-neutral-500">
             <span>IndexedDB KeyVal Storage</span>
-            <span>Audio blobs cached offline</span>
+            <span>Audio blobs, progress & bookmarks cached offline</span>
           </div>
         </div>
       </div>
 
-      {/* 5. ABOUT WINDOWS PHONE METRO */}
+      {/* 6. ABOUT METRO READER */}
       <div className="p-4 bg-black border border-neutral-900 text-xs text-neutral-500 space-y-1">
-        <div className="text-white font-semibold">AudioBookify · Windows Phone Metro Edition</div>
-        <div>Built for iOS Safari and Android Chrome as an installable PWA. Powered by ElevenLabs Neural TTS.</div>
+        <div className="text-white font-semibold">Metro Reader · Windows Phone Audiobook Studio</div>
+        <div>Built for iOS Safari, Android Chrome, and native APK packaging. Powered by ElevenLabs Neural TTS and Google Drive.</div>
       </div>
     </div>
   );

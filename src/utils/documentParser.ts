@@ -95,6 +95,8 @@ export async function parseBookFile(file: File): Promise<Book> {
     currentChapterIndex: 0,
     playbackPosition: 0,
     isFullyConverted: false,
+    bookmarks: [],
+    progressPercent: 0,
   };
 }
 

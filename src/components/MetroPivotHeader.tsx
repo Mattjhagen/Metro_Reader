@@ -8,7 +8,7 @@ interface MetroPivotHeaderProps {
 }
 
 const PIVOTS: { id: MetroPivot; title: string; kicker: string }[] = [
-  { id: 'library', title: 'library', kicker: 'AUDIOBOOKIFY' },
+  { id: 'library', title: 'library', kicker: 'METRO READER' },
   { id: 'converter', title: 'convert', kicker: 'ELEVENLABS TTS' },
   { id: 'nowplaying', title: 'now playing', kicker: 'AUDIO PLAYER' },
   { id: 'settings', title: 'settings', kicker: 'PREFERENCES' },

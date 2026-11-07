@@ -6,6 +6,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
   return {
+    define: {
+      'process.env.ELEVENLABS_API_KEY': JSON.stringify(process.env.ELEVENLABS_API_KEY || ''),
+    },
     plugins: [
       react(),
       tailwindcss(),
@@ -14,11 +17,11 @@ export default defineConfig(() => {
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
         manifest: {
           id: '/',
-          name: 'AudioBookify - ElevenLabs Audiobook Reader',
-          short_name: 'AudioBookify',
-          description: 'Convert any book format (PDF, EPUB, DOCX, TXT, MD) into audiobooks with ElevenLabs.',
-          theme_color: '#090d16',
-          background_color: '#090d16',
+          name: 'Metro Reader',
+          short_name: 'Metro Reader',
+          description: 'Windows Phone Metro UI audiobook studio. Convert any book format with ElevenLabs and import from Google Drive.',
+          theme_color: '#000000',
+          background_color: '#000000',
           display: 'standalone',
           start_url: '/',
           scope: '/',
@@ -44,7 +47,8 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,jpg,jpeg}'],
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg}'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -84,14 +88,11 @@ export default defineConfig(() => {
     ],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname || '.'),
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
   };
