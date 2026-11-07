@@ -1,6 +1,9 @@
 node_modules/
 build/
 dist/
+android/src/main/assets/
+MetroReader-debug.apk
+MetroReader-debug.apk.idsig
 coverage/
 .DS_Store
 *.log
