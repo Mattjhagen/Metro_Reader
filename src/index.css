@@ -84,3 +84,35 @@
   line-height: 1.05;
   text-transform: lowercase;
 }
+
+/* Metro Pivot horizontal sliding animations */
+@keyframes metroSlideInFromRight {
+  0% {
+    opacity: 0.2;
+    transform: translateX(40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes metroSlideInFromLeft {
+  0% {
+    opacity: 0.2;
+    transform: translateX(-40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.metro-slide-right {
+  animation: metroSlideInFromRight 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.metro-slide-left {
+  animation: metroSlideInFromLeft 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+

@@ -141,7 +141,6 @@ export function splitTextIntoChunks(text: string, maxChars = 2200): string[] {
   if (!text || text.trim().length === 0) return [];
   if (text.length <= maxChars) return [text.trim()];
 
-  // Split by sentences (matching punctuation followed by space or newline)
   const sentenceRegex = /[^.!?\n]+[.!?\n]+|\s*\n\s*|[^.!?\n]+$/g;
   const sentences = text.match(sentenceRegex) || [text];
 
@@ -159,7 +158,6 @@ export function splitTextIntoChunks(text: string, maxChars = 2200): string[] {
         chunks.push(currentChunk.trim());
       }
 
-      // If a single sentence exceeds maxChars, hard break at punctuation or space
       if (trimmed.length > maxChars) {
         let remaining = trimmed;
         while (remaining.length > maxChars) {
@@ -222,25 +220,23 @@ export async function convertSingleChunk(
 }
 
 /**
- * Synthesizes a demo offline audio wave when testing without API key
+ * Generates an audible offline WAV audio blob with rich speech-cadence tones
  */
-export async function generateDemoAudioBlob(text: string): Promise<Blob> {
-  // Generate a clean Web Audio chime / tone melody or spoken audio using browser speech synthesis
+export async function generateDemoAudioBlob(text: string, durationSeconds = 30): Promise<Blob> {
   return new Promise((resolve) => {
-    // Generate an MP3-compatible wav audio blob in memory for testing
     const sampleRate = 44100;
-    const duration = Math.min(12, Math.max(3, Math.round(text.length / 30)));
+    const duration = Math.min(60, Math.max(15, durationSeconds));
     const numSamples = sampleRate * duration;
     const buffer = new ArrayBuffer(44 + numSamples * 2);
     const view = new DataView(buffer);
 
-    // Write WAV Header
     const writeString = (offset: number, string: string) => {
       for (let i = 0; i < string.length; i++) {
         view.setUint8(offset + i, string.charCodeAt(i));
       }
     };
 
+    // RIFF Header
     writeString(0, 'RIFF');
     view.setUint32(4, 36 + numSamples * 2, true);
     writeString(8, 'WAVE');
@@ -255,16 +251,26 @@ export async function generateDemoAudioBlob(text: string): Promise<Blob> {
     writeString(36, 'data');
     view.setUint32(40, numSamples * 2, true);
 
-    // Warm ambient narrator chord tone
+    // Warm ambient audiobook narrator modulation
+    // Simulates natural speech syllables and warm cadence
+    const basePitch = 165; // Warm male/female narrator pitch
+
     for (let i = 0; i < numSamples; i++) {
       const t = i / sampleRate;
-      const baseFreq = 220; // A3
-      const env = Math.exp(-t / 3) * Math.min(1, t * 10);
-      const sample =
-        (Math.sin(2 * Math.PI * baseFreq * t) * 0.4 +
-          Math.sin(2 * Math.PI * (baseFreq * 1.5) * t) * 0.3 +
-          Math.sin(2 * Math.PI * (baseFreq * 2) * t) * 0.2) *
-        env;
+      
+      // Syllable rhythm cadence (approx 3 syllables per second)
+      const syllable = Math.sin(2 * Math.PI * 3.2 * t);
+      const breath = 0.5 + 0.5 * Math.sin(2 * Math.PI * 0.3 * t);
+      const env = Math.max(0.05, syllable * syllable) * breath;
+
+      // Slight pitch intonation inflection
+      const pitchInflection = basePitch + 25 * Math.sin(2 * Math.PI * 0.8 * t);
+
+      const tone1 = Math.sin(2 * Math.PI * pitchInflection * t);
+      const tone2 = Math.sin(2 * Math.PI * (pitchInflection * 2) * t) * 0.4;
+      const tone3 = Math.sin(2 * Math.PI * (pitchInflection * 3) * t) * 0.2;
+      const sample = (tone1 + tone2 + tone3) * 0.35 * env;
+
       view.setInt16(44 + i * 2, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
     }
 

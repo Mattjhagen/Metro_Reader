@@ -2,8 +2,8 @@ import { get, set } from 'idb-keyval';
 import { AppSettings, Book, Bookmark } from '../types';
 import { generateDemoAudioBlob } from './elevenLabsApi';
 
-const BOOKS_STORAGE_KEY = 'metro_reader_audiobooks_v2';
-const SETTINGS_STORAGE_KEY = 'metro_reader_settings_v2';
+const BOOKS_STORAGE_KEY = 'metro_reader_audiobooks_v3';
+const SETTINGS_STORAGE_KEY = 'metro_reader_settings_v3';
 
 export const DEFAULT_SETTINGS: AppSettings = {
   elevenLabsApiKey: '',
@@ -16,35 +16,39 @@ export const DEFAULT_SETTINGS: AppSettings = {
     style: 0.15,
     use_speaker_boost: true,
   },
-  accentColor: '#00e5ff', // Neon Cyan matching new Metro Reader logo
+  accentColor: '#00e5ff',
   playbackSpeed: 1.0,
   autoPlayNextChapter: true,
   sleepTimerMinutes: null,
 };
 
 export async function loadBooks(): Promise<Book[]> {
-  const books = await get<Book[]>(BOOKS_STORAGE_KEY);
-  if (books && books.length > 0) {
-    return books.map((book) => ({
-      ...book,
-      bookmarks: book.bookmarks || [],
-      progressPercent: book.progressPercent ?? calculateBookProgress(book),
-      chapters: book.chapters.map((ch) => {
-        if (ch.audioBlob && !ch.audioUrl) {
-          return {
-            ...ch,
-            audioUrl: URL.createObjectURL(ch.audioBlob),
-          };
-        }
-        return ch;
-      }),
-    }));
+  let books = await get<Book[]>(BOOKS_STORAGE_KEY);
+  if (!books || books.length === 0) {
+    books = await createInitialSampleBooks();
+    await saveBooks(books);
   }
 
-  // Pre-seed sample books with initial audio & bookmarks
-  const seededBooks = await createInitialSampleBooks();
-  await saveBooks(seededBooks);
-  return seededBooks;
+  // ALWAYS re-create fresh object URLs for all chapters with an audioBlob
+  return books.map((book) => ({
+    ...book,
+    bookmarks: book.bookmarks || [],
+    progressPercent: book.progressPercent ?? calculateBookProgress(book),
+    chapters: book.chapters.map((ch) => {
+      let freshUrl = ch.audioUrl;
+      if (ch.audioBlob) {
+        try {
+          freshUrl = URL.createObjectURL(ch.audioBlob);
+        } catch {
+          freshUrl = undefined;
+        }
+      }
+      return {
+        ...ch,
+        audioUrl: freshUrl,
+      };
+    }),
+  }));
 }
 
 export function calculateBookProgress(book: Book): number {
@@ -58,7 +62,15 @@ export function calculateBookProgress(book: Book): number {
 }
 
 export async function saveBooks(books: Book[]): Promise<void> {
-  await set(BOOKS_STORAGE_KEY, books);
+  // Strip transient object URLs before saving to avoid storing stale revoked URLs
+  const storable = books.map((b) => ({
+    ...b,
+    chapters: b.chapters.map((ch) => ({
+      ...ch,
+      audioUrl: undefined, // Fresh URLs will be created on load from audioBlob
+    })),
+  }));
+  await set(BOOKS_STORAGE_KEY, storable);
 }
 
 export async function saveBookProgress(
@@ -144,11 +156,13 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
 }
 
 async function createInitialSampleBooks(): Promise<Book[]> {
-  const timeMachineDemoAudio = await generateDemoAudioBlob(
-    'The Time Traveller (for so it will be convenient to speak of him) was expounding a recondite matter to us.'
-  );
-
-  const timeMachineUrl = URL.createObjectURL(timeMachineDemoAudio);
+  // Pre-generate audio blobs for all initial sample chapters
+  const [tmAudio1, tmAudio2, shAudio1, shAudio2] = await Promise.all([
+    generateDemoAudioBlob('The Time Traveller was expounding a recondite matter to us.', 45),
+    generateDemoAudioBlob('The glittering metallic framework was scarcely larger than a small clock.', 45),
+    generateDemoAudioBlob('To Sherlock Holmes she is always the woman.', 45),
+    generateDemoAudioBlob('At three o clock precisely I was at Baker Street.', 45),
+  ]);
 
   const timeMachine: Book = {
     id: 'sample_timemachine',
@@ -160,16 +174,16 @@ async function createInitialSampleBooks(): Promise<Book[]> {
     totalChars: 18920,
     createdAt: Date.now() - 86400000 * 2,
     currentChapterIndex: 0,
-    playbackPosition: 12,
-    progressPercent: 25,
-    isFullyConverted: false,
+    playbackPosition: 0,
+    progressPercent: 20,
+    isFullyConverted: true,
     bookmarks: [
       {
         id: 'bm_sample_1',
         bookId: 'sample_timemachine',
         chapterIndex: 0,
         chapterTitle: 'Chapter 1: The Principle of Time',
-        timestamp: 12,
+        timestamp: 8,
         note: 'Filby discusses the fourth dimension',
         createdAt: Date.now() - 3600000,
       },
@@ -201,9 +215,9 @@ async function createInitialSampleBooks(): Promise<Book[]> {
 Filby became pensive. "Clearly," the Time Traveller proceeded, "any real body must have extension in four directions: it must have Length, Breadth, Thickness, and—Duration. But through a natural infirmity of the flesh, which I will explain to you in a moment, we incline to overlook this fact. There are really four dimensions, three which we call the three planes of Space, and a fourth, Time."`,
         wordCount: 1620,
         charCount: 9460,
-        audioBlob: timeMachineDemoAudio,
-        audioUrl: timeMachineUrl,
-        duration: 48,
+        audioBlob: tmAudio1,
+        audioUrl: URL.createObjectURL(tmAudio1),
+        duration: 45,
         isConverted: true,
       },
       {
@@ -218,7 +232,10 @@ The Medical Man got up out of his chair and peered into the thing. "It's beautif
 "It took two years to make," retorted the Time Traveller. Then, when we had all imitated the Medical Man, he said: "Now I want you clearly to understand that this lever, being pressed over, sends the machine gliding into the future, and this other reverses the motion."`,
         wordCount: 1620,
         charCount: 9460,
-        isConverted: false,
+        audioBlob: tmAudio2,
+        audioUrl: URL.createObjectURL(tmAudio2),
+        duration: 45,
+        isConverted: true,
       },
     ],
   };
@@ -236,7 +253,7 @@ The Medical Man got up out of his chair and peered into the thing. "It's beautif
     playbackPosition: 0,
     progressPercent: 0,
     bookmarks: [],
-    isFullyConverted: false,
+    isFullyConverted: true,
     chapters: [
       {
         id: 'sh_ch1',
@@ -248,7 +265,10 @@ He never spoke of the softer passions, save with a gibe and a sneer. They were a
 I had seen little of Holmes lately. My marriage had drifted us away from each other. My own complete happiness, and the home-centred interests which rise up around the man who first finds himself master of his own establishment, were sufficient to absorb all my attention; while Holmes, who loathed every form of society with his whole Bohemian soul, remained in our lodgings in Baker Street, buried among his old books, and alternating from week to week between cocaine and ambition, the drowsiness of the drug, and the fierce energy of his own keen nature.`,
         wordCount: 2090,
         charCount: 12100,
-        isConverted: false,
+        audioBlob: shAudio1,
+        audioUrl: URL.createObjectURL(shAudio1),
+        duration: 45,
+        isConverted: true,
       },
       {
         id: 'sh_ch2',
@@ -260,7 +280,10 @@ Indeed, apart from the nature of the investigation which my friend had on hand, 
 It was close upon four before the door opened, and a drunken-looking groom, ill-kempt and side-whiskered, with an inflamed face and disreputable clothes, walked into the room. Accustomed as I was to my friend's amazing powers in the use of disguises, I had to look at him twice before I was certain that it was indeed he.`,
         wordCount: 2090,
         charCount: 12100,
-        isConverted: false,
+        audioBlob: shAudio2,
+        audioUrl: URL.createObjectURL(shAudio2),
+        duration: 45,
+        isConverted: true,
       },
     ],
   };
