@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Book, Chapter, AppSettings, ElevenLabsVoice } from '../types';
 import { ELEVENLABS_MODELS, fetchVoices, splitTextIntoChunks, convertSingleChunk, generateDemoAudioBlob } from '../utils/elevenLabsApi';
-import { Play, Pause, Zap, CheckCircle2, AlertTriangle, Sliders, Volume2, Download, RefreshCw, Key } from 'lucide-react';
+import { Play, Pause, Zap, CheckCircle2, AlertTriangle, Sliders, Volume2, Download, RefreshCw, Key, Scissors } from 'lucide-react';
+import { ChapterEditorModal } from './ChapterEditorModal';
 
 interface ConverterPivotProps {
   books: Book[];
@@ -41,6 +42,7 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [conversionSuccess, setConversionSuccess] = useState<string | null>(null);
+  const [isChapterEditorOpen, setIsChapterEditorOpen] = useState<boolean>(false);
   const abortControllerRef = useRef<boolean>(false);
 
   // Keep chapter index in bounds
@@ -241,9 +243,31 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
 
       {/* 2. BOOK & CHAPTER SELECTOR */}
       <div className="space-y-4">
-        <div className="text-[11px] font-bold tracking-widest uppercase text-neutral-400 border-b border-neutral-800 pb-1">
-          01. SELECT BOOK & CHAPTER
+        <div className="flex items-center justify-between border-b border-neutral-800 pb-1">
+          <div className="text-[11px] font-bold tracking-widest uppercase text-neutral-400">
+            01. SELECT BOOK & CHAPTER
+          </div>
+          {currentBook && (
+            <button
+              onClick={() => setIsChapterEditorOpen(true)}
+              className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 text-cyan-400 hover:text-white transition-colors"
+            >
+              <Scissors className="w-3.5 h-3.5" />
+              <span>Edit / Re-split Chapters</span>
+            </button>
+          )}
         </div>
+
+        {/* Chapter Editor Modal */}
+        {currentBook && (
+          <ChapterEditorModal
+            isOpen={isChapterEditorOpen}
+            onClose={() => setIsChapterEditorOpen(false)}
+            book={currentBook}
+            onUpdateBook={onUpdateBook}
+            accentColor={settings.accentColor}
+          />
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Book Dropdown */}
