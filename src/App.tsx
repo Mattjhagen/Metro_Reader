@@ -493,7 +493,7 @@ export default function App() {
 
     if (isHorizontalSwipeRef.current) {
       touchDeltaXRef.current = deltaX;
-      setDragOffset(Math.max(-80, Math.min(80, deltaX * 0.45)));
+      setDragOffset(Math.max(-120, Math.min(120, deltaX * 0.62)));
     }
   };
 
@@ -529,7 +529,7 @@ export default function App() {
     const deltaX = e.clientX - mouseStartXRef.current;
     if (Math.abs(deltaX) > 10) {
       touchDeltaXRef.current = deltaX;
-      setDragOffset(Math.max(-80, Math.min(80, deltaX * 0.4)));
+      setDragOffset(Math.max(-120, Math.min(120, deltaX * 0.58)));
       setIsDragging(true);
     }
   };
@@ -666,7 +666,7 @@ export default function App() {
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
-          className={`flex-1 w-full pt-2 select-none overflow-x-hidden ${
+          className={`metro-pivot-content flex-1 w-full pt-2 select-none overflow-x-hidden ${
             !isDragging && slideDirection === 'right'
               ? 'metro-slide-right'
               : !isDragging && slideDirection === 'left'
@@ -675,7 +675,8 @@ export default function App() {
           }`}
           style={{
             transform: dragOffset !== 0 ? `translateX(${dragOffset}px)` : undefined,
-            transition: isDragging ? 'none' : 'transform 0.15s ease-out',
+            transition: isDragging ? 'none' : 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1)',
+            willChange: 'transform',
           }}
           key={currentPivot}
         >
