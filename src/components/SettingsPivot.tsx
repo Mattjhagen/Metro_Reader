@@ -15,7 +15,7 @@ interface SettingsPivotProps {
 }
 
 const WP_ACCENT_COLORS = [
-  { name: 'Cyan (Lumia)', hex: '#00e5ff' },
+  { name: 'Cyan', hex: '#00e5ff' },
   { name: 'Magenta', hex: '#d80073' },
   { name: 'Mango', hex: '#f09609' },
   { name: 'Lime', hex: '#a4c400' },
@@ -223,7 +223,7 @@ export const SettingsPivot: React.FC<SettingsPivotProps> = ({
           METRO ACCENT COLOR
         </div>
         <p className="text-xs text-neutral-400 font-light">
-          Choose your authentic Windows Phone theme color.
+          Choose your accent theme color.
         </p>
 
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-1">
@@ -279,7 +279,7 @@ export const SettingsPivot: React.FC<SettingsPivotProps> = ({
 
       {/* 6. ABOUT METRO READER */}
       <div className="p-4 bg-black border border-neutral-900 text-xs text-neutral-500 space-y-1">
-        <div className="text-white font-semibold">Metro Reader · Windows Phone Audiobook Studio</div>
+        <div className="text-white font-semibold">Metro Reader · Minimalist Audiobook Studio</div>
         <div>Built for iOS Safari, Android Chrome, and native APK packaging. Powered by ElevenLabs Neural TTS and Google Drive.</div>
       </div>
     </div>

@@ -189,7 +189,7 @@ export const MetroAppBar: React.FC<MetroAppBarProps> = ({
           </button>
         </div>
 
-        {/* Windows Phone Ellipsis Button */}
+        {/* Metro Ellipsis Button */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className="p-2 text-neutral-400 hover:text-white transition-colors"

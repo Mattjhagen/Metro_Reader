@@ -15,7 +15,7 @@ export const MetroStatusBar: React.FC<MetroStatusBarProps> = ({ accentColor }) =
       const now = new Date();
       const hours = now.getHours();
       const minutes = now.getMinutes().toString().padStart(2, '0');
-      // Windows Phone 12hr format e.g. "12:38" or 24hr format
+      // 12hr format e.g. "12:38" or 24hr format
       const formatted = `${hours}:${minutes}`;
       setTimeStr(formatted);
     };
@@ -28,7 +28,7 @@ export const MetroStatusBar: React.FC<MetroStatusBarProps> = ({ accentColor }) =
   return (
     <div className="w-full flex items-center justify-between px-4 pt-1 pb-1 text-xs select-none tracking-wider text-neutral-400 font-normal border-b border-neutral-900 bg-black">
       <div className="flex items-center gap-2">
-        <span className="font-semibold tracking-normal text-white text-[11px]">WINDOWS PHONE</span>
+        <span className="font-semibold tracking-normal text-white text-[11px]">METRO READER</span>
         <div className="flex items-center gap-1.5 opacity-80">
           <Signal className="w-3 h-3 text-neutral-300" />
           <Wifi className={`w-3 h-3 ${isOnline ? 'text-neutral-300' : 'text-red-500'}`} />

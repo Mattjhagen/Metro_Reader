@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --wp-accent: #1ba1e2; /* Windows Phone Cyan Default */
+    --wp-accent: #00e5ff; /* Metro Cyan Default */
     --wp-bg: #000000;
     --wp-surface: #111111;
     --wp-surface-hover: #1f1f1f;
@@ -19,7 +19,7 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 
-  /* Sharp corners rule for authentic Windows Phone Metro UI */
+  /* Sharp corners rule for Metro UI */
   button, input, select, textarea {
     font-family: inherit;
   }

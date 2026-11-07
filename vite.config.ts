@@ -19,7 +19,7 @@ export default defineConfig(() => {
           id: '/',
           name: 'Metro Reader',
           short_name: 'Metro Reader',
-          description: 'Windows Phone Metro UI audiobook studio. Convert any book format with ElevenLabs and import from Google Drive.',
+          description: 'Minimalist Metro UI audiobook studio. Convert any book format with ElevenLabs and import from Google Drive.',
           theme_color: '#000000',
           background_color: '#000000',
           display: 'standalone',

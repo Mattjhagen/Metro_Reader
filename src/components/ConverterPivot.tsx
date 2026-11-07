@@ -566,7 +566,7 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
             </div>
           )}
 
-          {/* Giant Windows Phone Action Button */}
+          {/* Action Button */}
           <button
             onClick={() => handleConvertChapter(selectedChapterIndex)}
             disabled={isConverting}
