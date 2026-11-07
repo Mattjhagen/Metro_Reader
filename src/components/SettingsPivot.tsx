@@ -102,6 +102,21 @@ export const SettingsPivot: React.FC<SettingsPivotProps> = ({
           Your key is stored locally in your device's secure browser sandbox. It is never sent to third-party servers.
         </p>
 
+        <label className="p-4 bg-[#141414] border border-neutral-800 flex items-center justify-between gap-4 cursor-pointer">
+          <div>
+            <div className="text-sm font-semibold text-white">Use ElevenLabs cloud voices</div>
+            <div className="text-xs text-neutral-400 mt-1">
+              Off uses the built-in device voice and avoids subscription voice restrictions.
+            </div>
+          </div>
+          <input
+            type="checkbox"
+            checked={settings.useElevenLabs}
+            onChange={(e) => onUpdateSettings({ useElevenLabs: e.target.checked })}
+            className="w-5 h-5 accent-cyan-400 shrink-0"
+          />
+        </label>
+
         <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="password"

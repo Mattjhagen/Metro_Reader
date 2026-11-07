@@ -8,6 +8,7 @@ BUILD_TOOLS="$SDK_DIR/build-tools/36.0.0"
 ANDROID_JAR="$SDK_DIR/platforms/android-36/android.jar"
 BUILD_DIR="$ANDROID_DIR/build"
 ASSETS_DIR="$ANDROID_DIR/src/main/assets"
+KEYSTORE="$ROOT_DIR/.metroreader-debug.keystore"
 
 if [[ ! -x "$BUILD_TOOLS/aapt2" || ! -f "$ANDROID_JAR" ]]; then
   echo "Android SDK 36.0.0 was not found at $SDK_DIR" >&2
@@ -46,12 +47,12 @@ jar uf "$BUILD_DIR/unsigned-with-assets.apk" assets
 cd "$BUILD_DIR"
 "$BUILD_TOOLS/zipalign" -f 4 unsigned-with-assets.apk aligned.apk
 
-if [[ ! -f "$BUILD_DIR/debug.keystore" ]]; then
-  keytool -genkeypair -v -keystore "$BUILD_DIR/debug.keystore" -storepass android \
+if [[ ! -f "$KEYSTORE" ]]; then
+  keytool -genkeypair -v -keystore "$KEYSTORE" -storepass android \
     -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 \
     -dname "CN=Android Debug,O=Android,C=US" >/dev/null 2>&1
 fi
-"$BUILD_TOOLS/apksigner" sign --ks "$BUILD_DIR/debug.keystore" --ks-pass pass:android \
+"$BUILD_TOOLS/apksigner" sign --ks "$KEYSTORE" --ks-pass pass:android \
   --key-pass pass:android --out "$ROOT_DIR/MetroReader-debug.apk" aligned.apk
 "$BUILD_TOOLS/apksigner" verify --verbose "$ROOT_DIR/MetroReader-debug.apk"
 echo "Built $ROOT_DIR/MetroReader-debug.apk"

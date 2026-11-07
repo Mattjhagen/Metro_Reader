@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Book, Chapter, AppSettings, ElevenLabsVoice } from '../types';
-import { ELEVENLABS_MODELS, fetchVoices, splitTextIntoChunks, convertSingleChunk, generateDemoAudioBlob } from '../utils/elevenLabsApi';
+import { ELEVENLABS_MODELS, fetchVoices, splitTextIntoChunks, convertSingleChunk } from '../utils/elevenLabsApi';
+import { convertWithBuiltInVoice } from '../utils/localTts';
 import { Play, Pause, Zap, CheckCircle2, AlertTriangle, Sliders, Volume2, Download, RefreshCw, Key, Scissors } from 'lucide-react';
 import { ChapterEditorModal } from './ChapterEditorModal';
 
@@ -133,7 +134,7 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
     const audioBlobs: Blob[] = [];
 
     try {
-      const hasApiKey = settings.elevenLabsApiKey.trim().length > 0;
+      const useElevenLabs = settings.useElevenLabs && settings.elevenLabsApiKey.trim().length > 0;
 
       for (let i = 0; i < chunks.length; i++) {
         if (abortControllerRef.current) {
@@ -153,7 +154,7 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
         });
 
         let chunkBlob: Blob;
-        if (hasApiKey) {
+        if (useElevenLabs) {
           chunkBlob = await convertSingleChunk(
             chunkText,
             settings.selectedVoiceId,
@@ -162,9 +163,7 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
             settings.elevenLabsApiKey
           );
         } else {
-          // Offline/Demo synthesis
-          await new Promise((r) => setTimeout(r, 600)); // realistic pacing
-          chunkBlob = await generateDemoAudioBlob(chunkText);
+          chunkBlob = await convertWithBuiltInVoice(chunkText);
         }
 
         audioBlobs.push(chunkBlob);
@@ -172,7 +171,7 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
 
       // Merge all chunks into a single audio blob
       const combinedBlob = new Blob(audioBlobs, {
-        type: hasApiKey ? 'audio/mpeg' : 'audio/wav',
+        type: useElevenLabs ? 'audio/mpeg' : 'audio/wav',
       });
       const audioUrl = URL.createObjectURL(combinedBlob);
 
@@ -228,7 +227,7 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
                 ElevenLabs API Key Not Set
               </h4>
               <p className="text-xs text-neutral-400 mt-0.5">
-                Conversions currently run in offline demo synthesizer mode. Add your ElevenLabs key in Settings to unlock ultra-realistic neural voices!
+                Conversions use the built-in device voice by default. Enable ElevenLabs in Settings only if your plan allows API voice access.
               </p>
             </div>
           </div>
@@ -317,7 +316,7 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
       {/* 3. VOICE & MODEL CONFIGURATION */}
       <div className="space-y-4">
         <div className="text-[11px] font-bold tracking-widest uppercase text-neutral-400 border-b border-neutral-800 pb-1">
-          02. ELEVENLABS VOICE & MODEL
+                02. VOICE & MODEL
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -378,7 +377,7 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
           {/* Model Selector */}
           <div className="space-y-1.5">
             <label className="text-xs text-neutral-400 uppercase font-semibold">
-              ElevenLabs Model
+                ElevenLabs Model (optional)
             </label>
             <select
               value={settings.selectedModelId}
@@ -602,8 +601,8 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
               {isConverting
                 ? 'Converting Audiobook...'
                 : activeChapter.isConverted
-                ? 'Re-Convert Chapter with ElevenLabs'
-                : 'Turn into Audiobook (ElevenLabs)'}
+                ? 'Re-Convert Chapter'
+                : 'Turn into Audiobook'}
             </span>
           </button>
         </div>

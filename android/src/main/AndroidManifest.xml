@@ -4,9 +4,9 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@drawable/ic_launcher"
+        android:icon="@drawable/metro_reader_icon"
         android:label="Metro Reader"
-        android:roundIcon="@drawable/ic_launcher"
+        android:roundIcon="@drawable/metro_reader_icon"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">

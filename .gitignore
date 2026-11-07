@@ -4,6 +4,7 @@ dist/
 android/src/main/assets/
 MetroReader-debug.apk
 MetroReader-debug.apk.idsig
+.metroreader-debug.keystore
 coverage/
 .DS_Store
 *.log

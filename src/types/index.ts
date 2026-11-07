@@ -65,6 +65,7 @@ export interface VoiceSettings {
 
 export interface AppSettings {
   elevenLabsApiKey: string;
+  useElevenLabs: boolean;
   selectedVoiceId: string;
   selectedVoiceName: string;
   selectedModelId: string;

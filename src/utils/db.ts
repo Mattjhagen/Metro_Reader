@@ -7,6 +7,7 @@ const SETTINGS_STORAGE_KEY = 'metro_reader_settings_v3';
 
 export const DEFAULT_SETTINGS: AppSettings = {
   elevenLabsApiKey: '',
+  useElevenLabs: false,
   selectedVoiceId: '21m00Tcm4TlvDq8ikWAM', // Rachel
   selectedVoiceName: 'Rachel',
   selectedModelId: 'eleven_multilingual_v2',

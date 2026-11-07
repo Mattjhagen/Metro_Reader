@@ -5,8 +5,12 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
+import android.util.Base64;
 import android.view.Window;
 import android.webkit.WebChromeClient;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -14,13 +18,17 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.ValueCallback;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Locale;
 
 public final class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
+    private TextToSpeech textToSpeech;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,6 +38,7 @@ public final class MainActivity extends Activity {
         window.setNavigationBarColor(Color.BLACK);
 
         webView = new WebView(this);
+        webView.addJavascriptInterface(new BuiltInTtsBridge(), "AndroidTts");
         webView.setBackgroundColor(Color.BLACK);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -55,7 +64,8 @@ public final class MainActivity extends Activity {
 
                 Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
-                intent.setType("application/octet-stream");
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                intent.setType("*/*");
                 intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] {
                         "application/epub+zip",
                         "application/pdf",
@@ -94,6 +104,21 @@ public final class MainActivity extends Activity {
         });
         setContentView(webView);
         webView.loadUrl("https://metro-reader.local/index.html");
+
+        textToSpeech = new TextToSpeech(this, status -> {
+            if (status == TextToSpeech.SUCCESS) {
+                webView.post(() -> {
+                    if (textToSpeech != null) textToSpeech.setLanguage(Locale.US);
+                });
+            }
+        });
+        textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+            @Override public void onStart(String utteranceId) { }
+            @Override public void onError(String utteranceId) {
+                notifyTtsError(utteranceId, "The built-in voice could not synthesize this text.");
+            }
+            @Override public void onDone(String utteranceId) { sendTtsFile(utteranceId); }
+        });
     }
 
     @Override
@@ -107,6 +132,61 @@ public final class MainActivity extends Activity {
         }
         filePathCallback.onReceiveValue(results);
         filePathCallback = null;
+    }
+
+    private final class BuiltInTtsBridge {
+        @JavascriptInterface
+        public void synthesize(String text, String requestId) {
+            if (textToSpeech == null) {
+                notifyTtsError(requestId, "The Android text-to-speech engine is unavailable.");
+                return;
+            }
+            File output = new File(getCacheDir(), requestId + ".wav");
+            Bundle params = new Bundle();
+            params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, requestId);
+            int status = textToSpeech.synthesizeToFile(text, params, output, requestId);
+            if (status == TextToSpeech.ERROR) {
+                notifyTtsError(requestId, "The Android text-to-speech engine rejected this text.");
+            }
+        }
+    }
+
+    private void sendTtsFile(String requestId) {
+        File output = new File(getCacheDir(), requestId + ".wav");
+        try (FileInputStream input = new FileInputStream(output)) {
+            byte[] bytes = new byte[(int) output.length()];
+            int offset = 0;
+            while (offset < bytes.length) {
+                int read = input.read(bytes, offset, bytes.length - offset);
+                if (read < 0) break;
+                offset += read;
+            }
+            String encoded = Base64.encodeToString(bytes, Base64.NO_WRAP);
+            webView.post(() -> webView.evaluateJavascript(
+                    "window.__metroTtsDone(" + quote(requestId) + "," + quote(encoded) + ",null)", null));
+        } catch (IOException error) {
+            notifyTtsError(requestId, "The generated voice file could not be read.");
+        } finally {
+            output.delete();
+        }
+    }
+
+    private void notifyTtsError(String requestId, String message) {
+        webView.post(() -> webView.evaluateJavascript(
+                "window.__metroTtsDone(" + quote(requestId) + ",\"\"," + quote(message) + ")", null));
+    }
+
+    private static String quote(String value) {
+        return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\"";
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (textToSpeech != null) {
+            textToSpeech.stop();
+            textToSpeech.shutdown();
+        }
+        super.onDestroy();
     }
 
     private static String mimeType(String path) {

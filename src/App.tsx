@@ -17,7 +17,8 @@ import {
 } from './utils/db';
 import { parseBookFile } from './utils/documentParser';
 import { downloadCompleteAudiobookMp3, downloadAudiobookZip } from './utils/audioExporter';
-import { convertSingleChunk, generateDemoAudioBlob } from './utils/elevenLabsApi';
+import { convertSingleChunk } from './utils/elevenLabsApi';
+import { convertWithBuiltInVoice } from './utils/localTts';
 import { MetroStatusBar } from './components/MetroStatusBar';
 import { MetroPivotHeader } from './components/MetroPivotHeader';
 import { MetroAppBar } from './components/MetroAppBar';
@@ -239,6 +240,11 @@ export default function App() {
 
   // Robust Audio Handlers (Instant audio synthesis & playback recovery)
   const handleTogglePlay = async (forcedChapterIndex?: number) => {
+    // React passes a click event when this function is used directly as an
+    // onClick callback. Only a numeric argument is a chapter request.
+    const requestedChapterIndex = typeof forcedChapterIndex === 'number'
+      ? forcedChapterIndex
+      : undefined;
     const book = activeBook || books[0];
     if (!book || book.chapters.length === 0) {
       setUploadNotice('Please select or upload a book to play.');
@@ -246,7 +252,9 @@ export default function App() {
       return;
     }
 
-    const chapterIdx = forcedChapterIndex !== undefined ? forcedChapterIndex : book.currentChapterIndex;
+    const chapterIdx = requestedChapterIndex !== undefined
+      ? requestedChapterIndex
+      : book.currentChapterIndex;
     const ch = book.chapters[chapterIdx];
     if (!ch) return;
 
@@ -254,7 +262,7 @@ export default function App() {
     if (!audio) return;
 
     // If currently playing the current chapter, pause it
-    if (isPlaying && (forcedChapterIndex === undefined || forcedChapterIndex === book.currentChapterIndex)) {
+    if (isPlaying && (requestedChapterIndex === undefined || requestedChapterIndex === book.currentChapterIndex)) {
       audio.pause();
       setIsPlaying(false);
       saveBookProgress(book.id, book.currentChapterIndex, audio.currentTime);
@@ -266,7 +274,7 @@ export default function App() {
       setUploadNotice(`Synthesizing speech for "${ch.title}"...`);
       try {
         let newBlob: Blob;
-        if (settings.elevenLabsApiKey.trim()) {
+        if (settings.useElevenLabs && settings.elevenLabsApiKey.trim()) {
           newBlob = await convertSingleChunk(
             ch.text.slice(0, 1500),
             settings.selectedVoiceId,
@@ -275,7 +283,7 @@ export default function App() {
             settings.elevenLabsApiKey
           );
         } else {
-          newBlob = await generateDemoAudioBlob(ch.text, 45);
+          newBlob = await convertWithBuiltInVoice(ch.text);
         }
         const freshUrl = URL.createObjectURL(newBlob);
         ch.audioBlob = newBlob;
@@ -288,7 +296,7 @@ export default function App() {
         setUploadNotice(`Playing: ${ch.title}`);
         setTimeout(() => setUploadNotice(null), 2500);
       } catch {
-        const fallbackBlob = await generateDemoAudioBlob(ch.text, 45);
+        const fallbackBlob = await convertWithBuiltInVoice(ch.text);
         const freshUrl = URL.createObjectURL(fallbackBlob);
         ch.audioBlob = fallbackBlob;
         ch.audioUrl = freshUrl;
@@ -308,7 +316,7 @@ export default function App() {
     try {
       if (audio.src !== ch.audioUrl) {
         audio.src = ch.audioUrl!;
-        audio.currentTime = forcedChapterIndex !== undefined ? 0 : (book.playbackPosition || 0);
+        audio.currentTime = requestedChapterIndex !== undefined ? 0 : (book.playbackPosition || 0);
       }
       audio.playbackRate = settings.playbackSpeed || 1.0;
       await audio.play();
@@ -419,11 +427,13 @@ export default function App() {
       newBook.progressPercent = 0;
       const updatedBooks = [newBook, ...books];
       await handleUpdateBooks(updatedBooks);
+      const persistedBooks = await loadBooks();
+      setBooks(persistedBooks);
       setActiveBookId(newBook.id);
       setUploadNotice(`Added "${newBook.title}" with ${newBook.chapters.length} chapters.`);
       setTimeout(() => {
         setUploadNotice(null);
-        setCurrentPivot('converter');
+        setCurrentPivot('library');
       }, 1200);
     } catch (err: any) {
       setUploadNotice(`Failed to parse book: ${err.message}`);
@@ -678,7 +688,6 @@ export default function App() {
             transition: isDragging ? 'none' : 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1)',
             willChange: 'transform',
           }}
-          key={currentPivot}
         >
           {isLoading ? (
             <div className="py-24 text-center space-y-3">
