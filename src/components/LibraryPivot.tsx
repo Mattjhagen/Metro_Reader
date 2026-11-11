@@ -10,7 +10,7 @@ interface LibraryPivotProps {
   onTogglePlay: () => void;
   onSelectBook: (book: Book, startPlay?: boolean) => void;
   onOpenConvertBook: (book: Book) => void;
-  onFileUpload: (file: File) => void;
+  onFileUpload: (file: File) => void | Promise<void>;
   onDeleteBook: (bookId: string) => void;
   settings: AppSettings;
   onNavigateToConvert: () => void;

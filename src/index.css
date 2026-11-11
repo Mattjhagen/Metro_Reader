@@ -109,11 +109,11 @@
 }
 
 .metro-slide-right {
-  animation: metroSlideInFromRight 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: metroSlideInFromRight 0.46s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .metro-slide-left {
-  animation: metroSlideInFromLeft 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: metroSlideInFromLeft 0.46s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 /* Keep vertical reading gestures native while giving pivot swipes a soft edge. */
@@ -121,6 +121,8 @@
   touch-action: pan-y;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 @media (prefers-reduced-motion: reduce) {

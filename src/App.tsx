@@ -17,7 +17,7 @@ import {
 } from './utils/db';
 import { parseBookFile } from './utils/documentParser';
 import { downloadCompleteAudiobookMp3, downloadAudiobookZip } from './utils/audioExporter';
-import { convertSingleChunk } from './utils/voiceStudioApi';
+import { convertSingleChunk, fetchVoices, mergeWavBlobs, splitTextIntoChunks } from './utils/voiceStudioApi';
 import { convertWithBuiltInVoice } from './utils/localTts';
 import { MetroStatusBar } from './components/MetroStatusBar';
 import { MetroPivotHeader } from './components/MetroPivotHeader';
@@ -55,6 +55,7 @@ export default function App() {
   const [isDriveModalOpen, setIsDriveModalOpen] = useState<boolean>(false);
   const [isAndroidApkModalOpen, setIsAndroidApkModalOpen] = useState<boolean>(false);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   const globalFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -144,8 +145,9 @@ export default function App() {
   }, []);
 
   const handleUpdateBooks = async (updatedBooks: Book[]) => {
-    setBooks(updatedBooks);
     await saveBooks(updatedBooks);
+    const persistedBooks = await loadBooks();
+    setBooks(persistedBooks);
   };
 
   const handleUpdateSettings = async (newSettingsPartial: Partial<AppSettings>) => {
@@ -399,6 +401,44 @@ export default function App() {
     setBooks(updated);
   };
 
+  const autoConvertBook = async (book: Book, surroundingBooks: Book[]) => {
+    if (!settings.useVoiceStudio) {
+      setUploadNotice(`Added "${book.title}". Enable VoiceStudio to convert it.`);
+      return;
+    }
+
+    try {
+      setUploadNotice(`VoiceStudio: finding a local voice for "${book.title}"...`);
+      const voices = await fetchVoices(settings.voiceStudioBaseUrl);
+      const selectedVoice = voices.find((voice) => voice.voice_id === settings.selectedVoiceId) || voices[0];
+      if (!selectedVoice) throw new Error('No VoiceStudio voices are available. Install a local TTS voice first.');
+
+      let workingBook = { ...book, chapters: [...book.chapters] };
+      for (let chapterIndex = 0; chapterIndex < workingBook.chapters.length; chapterIndex++) {
+        const chapter = workingBook.chapters[chapterIndex];
+        const chunks = splitTextIntoChunks(chapter.text);
+        if (chunks.length === 0) continue;
+        setUploadNotice(`VoiceStudio: converting chapter ${chapterIndex + 1}/${workingBook.chapters.length}...`);
+        const audioParts: Blob[] = [];
+        for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+          setUploadNotice(`VoiceStudio: chapter ${chapterIndex + 1}/${workingBook.chapters.length} · ${chunkIndex + 1}/${chunks.length}`);
+          audioParts.push(await convertSingleChunk(chunks[chunkIndex], selectedVoice.voice_id, settings.selectedModelId, settings.voiceSettings, settings.voiceStudioBaseUrl));
+        }
+        const audioBlob = await mergeWavBlobs(audioParts);
+        const updatedChapter = { ...chapter, audioBlob, audioUrl: URL.createObjectURL(audioBlob), isConverted: true, conversionProgress: 100, duration: Math.max(10, Math.round((chapter.wordCount / 150) * 60)) };
+        workingBook = { ...workingBook, chapters: workingBook.chapters.map((item, index) => index === chapterIndex ? updatedChapter : item) };
+        const savedBook = { ...workingBook, isFullyConverted: workingBook.chapters.every((item) => item.isConverted) };
+        await saveBooks([savedBook, ...surroundingBooks.filter((item) => item.id !== savedBook.id)]);
+        setBooks(await loadBooks());
+      }
+      setUploadNotice(`Added and converted "${book.title}" with VoiceStudio.`);
+      setTimeout(() => setUploadNotice(null), 3500);
+    } catch (err: any) {
+      setUploadNotice(`Added "${book.title}", but conversion stopped: ${err.message || 'VoiceStudio is unavailable.'}`);
+      setTimeout(() => setUploadNotice(null), 7000);
+    }
+  };
+
   const handleJumpToBookmark = (chapterIndex: number, timestamp: number) => {
     if (!activeBook) return;
     if (activeBook.currentChapterIndex !== chapterIndex) {
@@ -414,24 +454,29 @@ export default function App() {
 
   // Upload book file (local or Google Drive)
   const handleFileUpload = async (file: File) => {
+    if (isImporting) return;
+    setIsImporting(true);
     setUploadNotice(`Parsing ${file.name}...`);
     try {
       const newBook = await parseBookFile(file);
       newBook.bookmarks = [];
       newBook.progressPercent = 0;
-      const updatedBooks = [newBook, ...books];
-      await handleUpdateBooks(updatedBooks);
+      // Read the latest IndexedDB value instead of merging with a possibly stale
+      // render snapshot. This matters when an import follows a reset or another
+      // async library update.
       const persistedBooks = await loadBooks();
-      setBooks(persistedBooks);
+      const updatedBooks = [newBook, ...persistedBooks.filter((book) => book.id !== newBook.id)];
+      await saveBooks(updatedBooks);
+      const savedBooks = await loadBooks();
+      setBooks(savedBooks);
       setActiveBookId(newBook.id);
-      setUploadNotice(`Added "${newBook.title}" with ${newBook.chapters.length} chapters.`);
-      setTimeout(() => {
-        setUploadNotice(null);
-        setCurrentPivot('library');
-      }, 1200);
+      handleNavigatePivot('library', 'left');
+      await autoConvertBook(newBook, savedBooks.filter((book) => book.id !== newBook.id));
     } catch (err: any) {
       setUploadNotice(`Failed to parse book: ${err.message}`);
       setTimeout(() => setUploadNotice(null), 4000);
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -666,10 +711,6 @@ export default function App() {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           onTouchCancel={handleTouchEnd}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
           className={`metro-pivot-content flex-1 w-full pt-2 select-none overflow-x-hidden ${
             !isDragging && slideDirection === 'right'
               ? 'metro-slide-right'
@@ -680,7 +721,7 @@ export default function App() {
           style={{
             transform: dragOffset !== 0 ? `translateX(${dragOffset}px)` : undefined,
             transition: isDragging ? 'none' : 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1)',
-            willChange: 'transform',
+            willChange: isDragging ? 'transform' : undefined,
           }}
         >
           {isLoading ? (

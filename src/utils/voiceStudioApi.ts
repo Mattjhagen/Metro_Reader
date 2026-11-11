@@ -62,6 +62,36 @@ export async function convertSingleChunk(text: string, voiceId: string, modelId:
   return res.blob();
 }
 
+/** Join PCM WAV responses into one valid WAV file instead of concatenating headers. */
+export async function mergeWavBlobs(blobs: Blob[]): Promise<Blob> {
+  if (blobs.length === 0) throw new Error('VoiceStudio returned no audio.');
+  if (blobs.length === 1) return blobs[0];
+  const buffers = await Promise.all(blobs.map((blob) => blob.arrayBuffer()));
+  const first = new Uint8Array(buffers[0]);
+  const dataParts = buffers.map((buffer) => {
+    const bytes = new Uint8Array(buffer);
+    const dataOffset = (() => {
+      for (let i = 12; i + 8 <= bytes.length; ) {
+        const chunk = String.fromCharCode(bytes[i], bytes[i + 1], bytes[i + 2], bytes[i + 3]);
+        const size = new DataView(bytes.buffer, bytes.byteOffset + i + 4, 4).getUint32(0, true);
+        if (chunk === 'data') return i + 8;
+        i += 8 + size + (size % 2);
+      }
+      return 44;
+    })();
+    return bytes.slice(dataOffset);
+  });
+  const totalDataLength = dataParts.reduce((sum, part) => sum + part.length, 0);
+  const output = new Uint8Array(44 + totalDataLength);
+  output.set(first.slice(0, 44), 0);
+  let offset = 44;
+  for (const part of dataParts) { output.set(part, offset); offset += part.length; }
+  const view = new DataView(output.buffer);
+  view.setUint32(4, 36 + totalDataLength, true);
+  view.setUint32(40, totalDataLength, true);
+  return new Blob([output], { type: 'audio/wav' });
+}
+
 export async function generateDemoAudioBlob(text: string, durationSeconds = 30): Promise<Blob> {
   const sampleRate = 44100, duration = Math.min(60, Math.max(15, durationSeconds)), numSamples = sampleRate * duration;
   const buffer = new ArrayBuffer(44 + numSamples * 2), view = new DataView(buffer);

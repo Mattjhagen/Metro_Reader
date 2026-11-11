@@ -10,7 +10,15 @@ if (typeof window !== 'undefined') {
 }
 
 export async function parseBookFile(file: File): Promise<Book> {
-  const extension = file.name.split('.').pop()?.toLowerCase() || '';
+  const nameExtension = file.name.split('.').pop()?.toLowerCase() || '';
+  const mimeExtension: Record<string, string> = {
+    'application/epub+zip': 'epub',
+    'application/pdf': 'pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'text/markdown': 'md',
+    'text/plain': 'txt',
+  };
+  const extension = file.name.includes('.') ? nameExtension : mimeExtension[file.type] || 'txt';
   const fileId = 'book_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
 
   let title = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
