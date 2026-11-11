@@ -1,6 +1,5 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { MetroPivot } from '../types';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface MetroPivotHeaderProps {
   currentPivot: MetroPivot;
@@ -23,18 +22,11 @@ export const MetroPivotHeader: React.FC<MetroPivotHeaderProps> = ({
   const currentIndex = PIVOTS.findIndex((p) => p.id === currentPivot);
   const currentKicker = PIVOTS[currentIndex]?.kicker || 'METRO READER';
   const touchStartXRef = useRef<number>(0);
+  const activePivotRef = useRef<HTMLButtonElement>(null);
 
-  // Order pivots so the active one is first, followed cyclically by remaining pivots
-  const orderedPivots: { id: MetroPivot; title: string; isActive: boolean; index: number }[] = [];
-  for (let i = 0; i < PIVOTS.length; i++) {
-    const idx = (currentIndex + i) % PIVOTS.length;
-    orderedPivots.push({
-      id: PIVOTS[idx].id,
-      title: PIVOTS[idx].title,
-      isActive: i === 0,
-      index: idx,
-    });
-  }
+  useEffect(() => {
+    activePivotRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [currentPivot]);
 
   const handlePrevTab = () => {
     const prevIdx = (currentIndex - 1 + PIVOTS.length) % PIVOTS.length;
@@ -75,9 +67,8 @@ export const MetroPivotHeader: React.FC<MetroPivotHeaderProps> = ({
           />
         </div>
 
-        {/* Tab Pagination Indicators & Quick Nav */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 mr-1" title={`Tab ${currentIndex + 1} of ${PIVOTS.length}`}>
+        {/* Tab pagination; the heading strip below is the navigation surface. */}
+        <div className="flex items-center gap-1.5" title={`Pivot ${currentIndex + 1} of ${PIVOTS.length}`}>
             {PIVOTS.map((p, idx) => (
               <button
                 key={p.id}
@@ -92,43 +83,23 @@ export const MetroPivotHeader: React.FC<MetroPivotHeaderProps> = ({
                 aria-label={p.title}
               />
             ))}
-          </div>
-
-          {/* Quick previous/next chevron buttons for easy desktop sliding */}
-          <div className="flex items-center border border-neutral-800 bg-[#141414]">
-            <button
-              onClick={handlePrevTab}
-              className="p-1 text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors focus:outline-none"
-              title="Slide to previous tab"
-              aria-label="Previous tab"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-            </button>
-            <div className="w-[1px] h-3 bg-neutral-800" />
-            <button
-              onClick={handleNextTab}
-              className="p-1 text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors focus:outline-none"
-              title="Slide to next tab"
-              aria-label="Next tab"
-            >
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* Horizontal Pivot Headers with characteristic Metro bleed */}
-      <div className="flex items-baseline gap-6 overflow-x-auto no-scrollbar whitespace-nowrap py-1">
-        {orderedPivots.map((p) => (
+      {/* Windows Phone-style panorama strip: adjacent pivots intentionally bleed into view. */}
+      <div className="metro-pivot-strip flex items-baseline gap-8 overflow-x-auto no-scrollbar whitespace-nowrap py-1 -mx-4 px-4">
+        {PIVOTS.map((p, idx) => (
           <button
             key={p.id}
             onClick={() => {
-              if (!p.isActive) {
-                onSelectPivot(p.id, p.index > currentIndex ? 'right' : 'left');
+              if (p.id !== currentPivot) {
+                onSelectPivot(p.id, idx > currentIndex ? 'right' : 'left');
               }
             }}
-            className={`transition-all duration-200 tracking-tight text-left focus:outline-none cursor-pointer ${
-              p.isActive
+            ref={p.id === currentPivot ? activePivotRef : undefined}
+            aria-current={p.id === currentPivot ? 'page' : undefined}
+            className={`metro-pivot-heading shrink-0 transition-all duration-500 tracking-tight text-left focus:outline-none cursor-pointer ${
+              p.id === currentPivot
                 ? 'text-4xl sm:text-5xl font-light text-white'
                 : 'text-2xl sm:text-3xl font-light text-neutral-600 hover:text-neutral-300'
             }`}
@@ -137,6 +108,7 @@ export const MetroPivotHeader: React.FC<MetroPivotHeaderProps> = ({
           </button>
         ))}
       </div>
+      <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-neutral-600">swipe to explore</div>
     </div>
   );
 };

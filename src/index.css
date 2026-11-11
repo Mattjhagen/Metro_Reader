@@ -125,6 +125,15 @@
   backface-visibility: hidden;
 }
 
+.metro-pivot-strip {
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+}
+.metro-pivot-strip .metro-pivot-heading {
+  scroll-snap-align: center;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .metro-slide-right,
   .metro-slide-left {

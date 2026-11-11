@@ -29,7 +29,6 @@ import { SettingsPivot } from './components/SettingsPivot';
 import { PWAInstallModal } from './components/PWAInstallModal';
 import { GoogleDriveImportModal } from './components/GoogleDriveImportModal';
 import { AndroidApkModal } from './components/AndroidApkModal';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const PIVOT_ORDER: MetroPivot[] = ['library', 'converter', 'nowplaying', 'settings'];
 
@@ -686,26 +685,6 @@ export default function App() {
 
       {/* 3. MAIN PIVOT CONTENT AREA WITH HORIZONTAL SLIDE GESTURES */}
       <div className="relative flex-1 w-full max-w-5xl mx-auto flex flex-col">
-        {/* Desktop Left Edge Peek Slide Button */}
-        <button
-          onClick={slideToPrevTab}
-          className="hidden lg:flex absolute -left-5 top-1/2 -translate-y-1/2 z-30 w-8 h-12 bg-black/70 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-neutral-800 items-center justify-center transition-all opacity-40 hover:opacity-100 group"
-          title="Slide to previous tab (Left arrow)"
-          aria-label="Previous tab"
-        >
-          <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
-        </button>
-
-        {/* Desktop Right Edge Peek Slide Button */}
-        <button
-          onClick={slideToNextTab}
-          className="hidden lg:flex absolute -right-5 top-1/2 -translate-y-1/2 z-30 w-8 h-12 bg-black/70 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-neutral-800 items-center justify-center transition-all opacity-40 hover:opacity-100 group"
-          title="Slide to next tab (Right arrow)"
-          aria-label="Next tab"
-        >
-          <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
-        </button>
-
         <main
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
