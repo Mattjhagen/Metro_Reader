@@ -29,6 +29,7 @@ import { SettingsPivot } from './components/SettingsPivot';
 import { PWAInstallModal } from './components/PWAInstallModal';
 import { GoogleDriveImportModal } from './components/GoogleDriveImportModal';
 import { AndroidApkModal } from './components/AndroidApkModal';
+import { MetroPanorama } from './components/MetroPanorama';
 
 const PIVOT_ORDER: MetroPivot[] = ['library', 'converter', 'nowplaying', 'settings'];
 
@@ -37,8 +38,6 @@ export default function App() {
   const [activeBookId, setActiveBookId] = useState<string | null>(null);
   const [currentPivot, setCurrentPivot] = useState<MetroPivot>('library');
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
-  const [dragOffset, setDragOffset] = useState<number>(0);
-  const [isDragging, setIsDragging] = useState<boolean>(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -58,14 +57,6 @@ export default function App() {
 
   const globalFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Gesture Tracking Refs
-  const touchStartXRef = useRef<number>(0);
-  const touchStartYRef = useRef<number>(0);
-  const touchDeltaXRef = useRef<number>(0);
-  const isHorizontalSwipeRef = useRef<boolean | null>(null);
-  const isMouseDownRef = useRef<boolean>(false);
-  const mouseStartXRef = useRef<number>(0);
-
   // Tab Slide Navigation
   const handleNavigatePivot = useCallback((nextPivot: MetroPivot, direction?: 'left' | 'right') => {
     if (nextPivot === currentPivot) return;
@@ -76,8 +67,6 @@ export default function App() {
     }
     setSlideDirection(direction);
     setCurrentPivot(nextPivot);
-    setDragOffset(0);
-    setIsDragging(false);
   }, [currentPivot]);
 
   const slideToNextTab = useCallback(() => {
@@ -507,98 +496,6 @@ export default function App() {
     await downloadAudiobookZip(activeBook);
   };
 
-  // Check if target should ignore tab swipe (sliders or text inputs)
-  const isSliderOrInput = (target: EventTarget | null): boolean => {
-    if (!target || !(target as HTMLElement).closest) return false;
-    const el = target as HTMLElement;
-    return !!el.closest('input[type="range"], input, textarea, select, [data-no-swipe]');
-  };
-
-  // Touch Handlers for horizontal sliding between tabs
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (isInstallModalOpen || isDriveModalOpen || isAndroidApkModalOpen) return;
-    if (isSliderOrInput(e.target)) return;
-
-    touchStartXRef.current = e.touches[0].clientX;
-    touchStartYRef.current = e.touches[0].clientY;
-    touchDeltaXRef.current = 0;
-    isHorizontalSwipeRef.current = null;
-    setIsDragging(true);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartXRef.current === 0) return;
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    const deltaX = currentX - touchStartXRef.current;
-    const deltaY = currentY - touchStartYRef.current;
-
-    if (isHorizontalSwipeRef.current === null) {
-      if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
-        isHorizontalSwipeRef.current = Math.abs(deltaX) > Math.abs(deltaY);
-      }
-    }
-
-    if (isHorizontalSwipeRef.current) {
-      touchDeltaXRef.current = deltaX;
-      setDragOffset(Math.max(-120, Math.min(120, deltaX * 0.62)));
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (isHorizontalSwipeRef.current && Math.abs(touchDeltaXRef.current) > 35) {
-      if (touchDeltaXRef.current < -35) {
-        slideToNextTab();
-      } else {
-        slideToPrevTab();
-      }
-    }
-    touchStartXRef.current = 0;
-    touchStartYRef.current = 0;
-    touchDeltaXRef.current = 0;
-    isHorizontalSwipeRef.current = null;
-    setDragOffset(0);
-    setIsDragging(false);
-  };
-
-  // Mouse drag handlers for desktop swipe between tabs
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (isInstallModalOpen || isDriveModalOpen || isAndroidApkModalOpen) return;
-    if (isSliderOrInput(e.target)) return;
-    if (e.button !== 0) return;
-
-    isMouseDownRef.current = true;
-    mouseStartXRef.current = e.clientX;
-    touchDeltaXRef.current = 0;
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isMouseDownRef.current) return;
-    const deltaX = e.clientX - mouseStartXRef.current;
-    if (Math.abs(deltaX) > 10) {
-      touchDeltaXRef.current = deltaX;
-      setDragOffset(Math.max(-120, Math.min(120, deltaX * 0.58)));
-      setIsDragging(true);
-    }
-  };
-
-  const handleMouseUp = () => {
-    if (isMouseDownRef.current) {
-      if (Math.abs(touchDeltaXRef.current) > 45) {
-        if (touchDeltaXRef.current < -45) {
-          slideToNextTab();
-        } else {
-          slideToPrevTab();
-        }
-      }
-      isMouseDownRef.current = false;
-      mouseStartXRef.current = 0;
-      touchDeltaXRef.current = 0;
-      setDragOffset(0);
-      setIsDragging(false);
-    }
-  };
-
   return (
     <div
       className="min-h-screen bg-black text-white flex flex-col justify-between selection:bg-[#00e5ff] selection:text-black overflow-x-hidden"
@@ -676,33 +573,28 @@ export default function App() {
         </div>
       )}
 
-      {/* 2. METRO PIVOT HEADER */}
-      <MetroPivotHeader
-        currentPivot={currentPivot}
-        onSelectPivot={handleNavigatePivot}
-        accentColor={settings.accentColor}
-      />
+      {/* 2–3. METRO PANORAMA HEADER + CONTENT */}
+      <MetroPanorama
+        className="flex-1"
+        onNavigate={(direction) => direction === 'right' ? slideToNextTab() : slideToPrevTab()}
+      >
+        <MetroPivotHeader
+          currentPivot={currentPivot}
+          onSelectPivot={handleNavigatePivot}
+          accentColor={settings.accentColor}
+        />
 
-      {/* 3. MAIN PIVOT CONTENT AREA WITH HORIZONTAL SLIDE GESTURES */}
-      <div className="relative flex-1 w-full max-w-5xl mx-auto flex flex-col">
+        <div className="relative flex-1 w-full max-w-5xl mx-auto flex flex-col">
         <main
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onTouchCancel={handleTouchEnd}
           className={`metro-pivot-content flex-1 w-full pt-2 select-none overflow-x-hidden ${
-            !isDragging && slideDirection === 'right'
+            slideDirection === 'right'
               ? 'metro-slide-right'
-              : !isDragging && slideDirection === 'left'
+              : slideDirection === 'left'
               ? 'metro-slide-left'
               : ''
           }`}
-          style={{
-            transform: dragOffset !== 0 ? `translateX(${dragOffset}px)` : undefined,
-            transition: isDragging ? 'none' : 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1)',
-            willChange: isDragging ? 'transform' : undefined,
-          }}
         >
+          <div key={currentPivot} className="metro-panorama-foreground metro-panorama-enter">
           {isLoading ? (
             <div className="py-24 text-center space-y-3">
               <div
@@ -784,8 +676,10 @@ export default function App() {
               )}
             </>
           )}
+          </div>
         </main>
-      </div>
+        </div>
+      </MetroPanorama>
 
       {/* 4. METRO PERSISTENT APPLICATION BAR */}
       <MetroAppBar

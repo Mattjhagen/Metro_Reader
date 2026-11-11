@@ -53,7 +53,7 @@ export const MetroPivotHeader: React.FC<MetroPivotHeaderProps> = ({
 
   return (
     <div
-      className="pt-3 pb-2 px-4 select-none overflow-hidden bg-black border-b border-neutral-900/60"
+      className="metro-pivot-header pt-3 pb-2 px-4 select-none overflow-hidden bg-black border-b border-neutral-900/60"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
