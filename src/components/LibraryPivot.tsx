@@ -145,7 +145,7 @@ export const LibraryPivot: React.FC<LibraryPivotProps> = ({
           </div>
         </div>
 
-        {/* ElevenLabs Voice Live Tile */}
+        {/* VoiceStudio Voice Live Tile */}
         <div
           onClick={onNavigateToSettings}
           className="col-span-1 p-4 bg-[#181818] hover:bg-[#222222] text-white cursor-pointer flex flex-col justify-between transition-all duration-150 active:scale-[0.98] border border-neutral-800"
@@ -162,7 +162,7 @@ export const LibraryPivot: React.FC<LibraryPivotProps> = ({
               {settings.selectedVoiceName}
             </div>
             <div className="text-[11px] text-neutral-400 mt-1 truncate">
-              ElevenLabs AI
+              VoiceStudio local
             </div>
           </div>
 
@@ -206,7 +206,7 @@ export const LibraryPivot: React.FC<LibraryPivotProps> = ({
                 AUDIOBOOK CONVERTER
               </div>
               <div className="text-sm text-neutral-400 font-light mt-0.5">
-                Generate speech with ElevenLabs API
+                Generate speech with VoiceStudio locally
               </div>
             </div>
           </div>

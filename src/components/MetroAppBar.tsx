@@ -119,7 +119,7 @@ export const MetroAppBar: React.FC<MetroAppBarProps> = ({
           </button>
 
           <div className="pt-2 text-xs text-neutral-500 font-mono">
-            Metro Reader · ElevenLabs Neural TTS
+            Metro Reader · VoiceStudio local TTS
           </div>
         </div>
       )}

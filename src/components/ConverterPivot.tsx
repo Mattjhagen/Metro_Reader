@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Book, Chapter, AppSettings, ElevenLabsVoice } from '../types';
-import { ELEVENLABS_MODELS, fetchVoices, splitTextIntoChunks, convertSingleChunk } from '../utils/elevenLabsApi';
+import { Book, Chapter, AppSettings, VoiceStudioVoice } from '../types';
+import { VOICESTUDIO_MODELS, fetchVoices, splitTextIntoChunks, convertSingleChunk } from '../utils/voiceStudioApi';
 import { convertWithBuiltInVoice } from '../utils/localTts';
 import { Play, Pause, Zap, CheckCircle2, AlertTriangle, Sliders, Volume2, Download, RefreshCw, Key, Scissors } from 'lucide-react';
 import { ChapterEditorModal } from './ChapterEditorModal';
@@ -26,7 +26,7 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
 }) => {
   const currentBook = selectedBook || books[0] || null;
   const [selectedChapterIndex, setSelectedChapterIndex] = useState<number>(0);
-  const [voices, setVoices] = useState<ElevenLabsVoice[]>([]);
+  const [voices, setVoices] = useState<VoiceStudioVoice[]>([]);
   const [isLoadingVoices, setIsLoadingVoices] = useState(false);
   const [voicePreviewAudio, setVoicePreviewAudio] = useState<HTMLAudioElement | null>(null);
   const [playingPreviewVoiceId, setPlayingPreviewVoiceId] = useState<string | null>(null);
@@ -53,21 +53,19 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
     }
   }, [currentBook, selectedChapterIndex]);
 
-  // Load voices when component mounts or apiKey changes
+  // Load locally available VoiceStudio voices.
   useEffect(() => {
     let isMounted = true;
     const loadVoiceList = async () => {
       setIsLoadingVoices(true);
       try {
-        const vList = await fetchVoices(settings.elevenLabsApiKey);
+        const vList = await fetchVoices(settings.voiceStudioBaseUrl);
         if (isMounted) {
           setVoices(vList);
         }
       } catch (err: any) {
         if (isMounted) {
-          // Keep preset voices
-          const { PRESET_VOICES } = await import('../utils/elevenLabsApi');
-          setVoices(PRESET_VOICES);
+          setVoices([]);
         }
       } finally {
         if (isMounted) setIsLoadingVoices(false);
@@ -81,7 +79,7 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
         voicePreviewAudio.pause();
       }
     };
-  }, [settings.elevenLabsApiKey]);
+  }, [settings.voiceStudioBaseUrl]);
 
   const activeChapter: Chapter | undefined = currentBook?.chapters[selectedChapterIndex];
 
@@ -92,7 +90,7 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
     : '0';
 
   // Toggle voice preview
-  const handleToggleVoicePreview = (voice: ElevenLabsVoice) => {
+  const handleToggleVoicePreview = (voice: VoiceStudioVoice) => {
     if (playingPreviewVoiceId === voice.voice_id && voicePreviewAudio) {
       voicePreviewAudio.pause();
       setPlayingPreviewVoiceId(null);
@@ -134,7 +132,7 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
     const audioBlobs: Blob[] = [];
 
     try {
-      const useElevenLabs = settings.useElevenLabs && settings.elevenLabsApiKey.trim().length > 0;
+      const useVoiceStudio = settings.useVoiceStudio;
 
       for (let i = 0; i < chunks.length; i++) {
         if (abortControllerRef.current) {
@@ -154,13 +152,13 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
         });
 
         let chunkBlob: Blob;
-        if (useElevenLabs) {
+        if (useVoiceStudio) {
           chunkBlob = await convertSingleChunk(
             chunkText,
             settings.selectedVoiceId,
             settings.selectedModelId,
             settings.voiceSettings,
-            settings.elevenLabsApiKey
+            settings.voiceStudioBaseUrl
           );
         } else {
           chunkBlob = await convertWithBuiltInVoice(chunkText);
@@ -171,7 +169,7 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
 
       // Merge all chunks into a single audio blob
       const combinedBlob = new Blob(audioBlobs, {
-        type: useElevenLabs ? 'audio/mpeg' : 'audio/wav',
+        type: 'audio/wav',
       });
       const audioUrl = URL.createObjectURL(combinedBlob);
 
@@ -201,7 +199,7 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
       );
     } catch (err: any) {
       if (err.message !== 'Conversion cancelled by user.') {
-        setErrorMessage(err.message || 'Failed to generate audio from ElevenLabs.');
+        setErrorMessage(err.message || 'Failed to generate audio with VoiceStudio.');
       }
     } finally {
       setIsConverting(false);
@@ -218,16 +216,16 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
   return (
     <div className="space-y-8 pb-28 px-4 max-w-4xl mx-auto select-none">
       {/* 1. API KEY NOTICE / STATUS */}
-      {!settings.elevenLabsApiKey.trim() && (
+      {!settings.useVoiceStudio && (
         <div className="p-4 bg-[#181818] border-l-4 border-amber-500 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-start gap-3">
             <Key className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
             <div>
               <h4 className="text-sm font-semibold tracking-wide uppercase">
-                ElevenLabs API Key Not Set
+                VoiceStudio is disabled
               </h4>
               <p className="text-xs text-neutral-400 mt-0.5">
-                Conversions use the built-in device voice by default. Enable ElevenLabs in Settings only if your plan allows API voice access.
+                Enable VoiceStudio in Settings to use local audiobook narration.
               </p>
             </div>
           </div>
@@ -377,14 +375,14 @@ export const ConverterPivot: React.FC<ConverterPivotProps> = ({
           {/* Model Selector */}
           <div className="space-y-1.5">
             <label className="text-xs text-neutral-400 uppercase font-semibold">
-                ElevenLabs Model (optional)
+                VoiceStudio model
             </label>
             <select
               value={settings.selectedModelId}
               onChange={(e) => onUpdateSettings({ selectedModelId: e.target.value })}
               className="w-full bg-[#141414] border border-neutral-800 text-white p-3 text-sm focus:outline-none focus:border-white"
             >
-              {ELEVENLABS_MODELS.map((m) => (
+              {VOICESTUDIO_MODELS.map((m) => (
                 <option key={m.model_id} value={m.model_id}>
                   {m.name} - {m.description.substring(0, 40)}...
                 </option>

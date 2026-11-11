@@ -1,6 +1,6 @@
 # Metro Reader — Minimalist Audiobook Studio 🎧
 
-**Metro Reader** is a Progressive Web App (PWA) designed with a clean, typography-first Metro UI aesthetic. It lets you upload books in any format (**EPUB, PDF, DOCX, TXT, Markdown**, or import directly from **Google Drive**) and converts them into audiobooks using **ElevenLabs Neural Text-to-Speech**.
+**Metro Reader** is a Progressive Web App (PWA) designed with a clean, typography-first Metro UI aesthetic. It lets you upload books in any format (**EPUB, PDF, DOCX, TXT, Markdown**, or import directly from **Google Drive**) and converts them into audiobooks using a local **VoiceStudio** backend.
 
 ---
 
@@ -13,9 +13,9 @@
   - **TXT / Markdown**: Automatic heading and chapter detection.
   - **Google Drive**: Browse, search, and import books directly from cloud storage.
 
-- **ElevenLabs AI Speech Synthesis**:
-  - Preloaded neural voices (*Rachel, Adam, Antoni, Bella, George, Arnold, Nicole*) + your custom cloned voices.
-  - Model options: *Multilingual v2* (highest quality), *Turbo v2.5* (fast & cheap), *Flash v2.5*, and *Monolingual v1*.
+- **VoiceStudio Local Speech Synthesis**:
+  - Discovers the voices installed in your local VoiceStudio instance.
+  - Uses VoiceStudio's OpenAI-compatible speech endpoint at `http://localhost:3900` by default.
   - Smart natural sentence and paragraph chunking under character limits.
   - Custom voice parameters (Stability, Clarity / Similarity Boost).
   - Offline demo synthesizer fallback for testing without credits.
@@ -47,7 +47,7 @@
 ### 1. Prerequisites
 - **Node.js** (version 18 or higher)
 - **npm** or **bun**
-- An **ElevenLabs API Key** ([elevenlabs.io](https://elevenlabs.io/))
+- A running **VoiceStudio** instance with a TTS voice/model installed
 
 ### 2. Clone and Install Dependencies
 ```bash
@@ -67,14 +67,14 @@ cp .env.example .env
 
 Open `.env` and configure your keys:
 ```env
-# Optional: Pre-configured ElevenLabs API Key (users can also enter it in the app UI)
-ELEVENLABS_API_KEY="your_elevenlabs_api_key_here"
+# Optional: VoiceStudio backend URL (defaults to localhost)
+VITE_VOICESTUDIO_BASE_URL="http://localhost:3900"
 
 # Application host URL (used for OAuth redirects)
 APP_URL="http://localhost:3000"
 ```
 
-> **Note**: You can also enter or update your ElevenLabs API key directly within the app by navigating to the **settings** pivot.
+> **Note**: You can change and verify the VoiceStudio backend URL from the **settings** pivot.
 
 ### 4. Run Development Server
 ```bash
@@ -93,15 +93,12 @@ npm run preview
 
 ---
 
-## 🔑 ElevenLabs Setup
+## 🔊 VoiceStudio Setup
 
-1. Sign up or log in at [elevenlabs.io](https://elevenlabs.io/).
-2. Navigate to your profile settings to obtain your API key (`xi-...`).
-3. In Metro Reader:
-   - Tap the **settings** pivot at the top (or press `(⚙)` on the bottom bar).
-   - Paste your key into the **ELEVENLABS API KEY** field.
-   - Tap **SAVE & VERIFY**.
-   - Your account tier and remaining character quota will be displayed.
+1. Start VoiceStudio locally; its default backend URL is `http://localhost:3900`.
+2. In Metro Reader, open the **settings** pivot.
+3. Confirm the backend URL and tap **SAVE & CONNECT**.
+4. Choose one of the voices discovered from your VoiceStudio installation.
 
 ---
 

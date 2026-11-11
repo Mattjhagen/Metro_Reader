@@ -40,7 +40,7 @@ export interface Book {
   progressPercent?: number; // 0 to 100
 }
 
-export interface ElevenLabsVoice {
+export interface VoiceStudioVoice {
   voice_id: string;
   name: string;
   category: string;
@@ -49,7 +49,7 @@ export interface ElevenLabsVoice {
   labels?: Record<string, string>;
 }
 
-export interface ElevenLabsModel {
+export interface VoiceStudioModel {
   model_id: string;
   name: string;
   description: string;
@@ -64,8 +64,8 @@ export interface VoiceSettings {
 }
 
 export interface AppSettings {
-  elevenLabsApiKey: string;
-  useElevenLabs: boolean;
+  voiceStudioBaseUrl: string;
+  useVoiceStudio: boolean;
   selectedVoiceId: string;
   selectedVoiceName: string;
   selectedModelId: string;

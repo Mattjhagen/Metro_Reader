@@ -7,7 +7,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig(() => {
   return {
     define: {
-      'process.env.ELEVENLABS_API_KEY': JSON.stringify(process.env.ELEVENLABS_API_KEY || ''),
+      'import.meta.env.VITE_VOICESTUDIO_BASE_URL': JSON.stringify(process.env.VITE_VOICESTUDIO_BASE_URL || 'http://localhost:3900'),
     },
     plugins: [
       react(),
@@ -19,7 +19,7 @@ export default defineConfig(() => {
           id: '/',
           name: 'Metro Reader',
           short_name: 'Metro Reader',
-          description: 'Minimalist Metro UI audiobook studio. Convert any book format with ElevenLabs and import from Google Drive.',
+          description: 'Minimalist Metro UI audiobook studio powered by local VoiceStudio and Google Drive.',
           theme_color: '#000000',
           background_color: '#000000',
           display: 'standalone',

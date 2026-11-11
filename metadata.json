@@ -1,6 +1,6 @@
 {
   "name": "Metro Reader - Universal Audiobook Studio",
-  "description": "Upload books in any format (PDF, EPUB, DOCX, TXT, Markdown) and convert them into audiobooks using ElevenLabs. Features Google Drive cloud import, offline playback, lock-screen controls, and bookmarking.",
+  "description": "Upload books in any format (PDF, EPUB, DOCX, TXT, Markdown) and convert them into audiobooks using local VoiceStudio. Features Google Drive cloud import, offline playback, lock-screen controls, and bookmarking.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

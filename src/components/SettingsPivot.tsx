@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AppSettings } from '../types';
-import { fetchSubscriptionDetails } from '../utils/elevenLabsApi';
+import { checkVoiceStudio } from '../utils/voiceStudioApi';
 import { Key, Palette, HardDrive, Smartphone, Check, AlertCircle, RefreshCw, Sparkles, ExternalLink, Cloud, Download } from 'lucide-react';
 import { usePWAInstall } from '../hooks/usePWA';
 import { getDriveAccessToken } from '../utils/googleDrive';
@@ -35,55 +35,39 @@ export const SettingsPivot: React.FC<SettingsPivotProps> = ({
   onOpenAndroidApk,
   onResetSampleBooks,
 }) => {
-  const [apiKeyInput, setApiKeyInput] = useState(settings.elevenLabsApiKey);
+  const [baseUrlInput, setBaseUrlInput] = useState(settings.voiceStudioBaseUrl);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifyStatus, setVerifyStatus] = useState<{
     success: boolean;
     message: string;
-    charsRemaining?: number;
-    charLimit?: number;
-    tier?: string;
   } | null>(null);
 
   const { isInstalled } = usePWAInstall();
   const hasDriveToken = !!getDriveAccessToken();
 
   const handleSaveAndVerifyKey = async () => {
-    const key = apiKeyInput.trim();
+    const baseUrl = baseUrlInput.trim();
     setIsVerifying(true);
     setVerifyStatus(null);
 
-    onUpdateSettings({ elevenLabsApiKey: key });
+    onUpdateSettings({ voiceStudioBaseUrl: baseUrl, useVoiceStudio: true });
 
-    if (!key) {
+    if (!baseUrl) {
       setIsVerifying(false);
       setVerifyStatus({
         success: true,
-        message: 'Key cleared. App will use demo synthesis.',
+        message: 'VoiceStudio URL cleared.',
       });
       return;
     }
 
     try {
-      const sub = await fetchSubscriptionDetails(key);
-      if (sub) {
-        setVerifyStatus({
-          success: true,
-          message: `API Key Verified! Tier: ${sub.tier}`,
-          charsRemaining: sub.characterLimit - sub.characterCount,
-          charLimit: sub.characterLimit,
-          tier: sub.tier,
-        });
-      } else {
-        setVerifyStatus({
-          success: true,
-          message: 'API Key saved.',
-        });
-      }
+      await checkVoiceStudio(baseUrl);
+      setVerifyStatus({ success: true, message: 'VoiceStudio connected.' });
     } catch (err: any) {
       setVerifyStatus({
         success: false,
-        message: err.message || 'Verification failed. Please check key.',
+        message: err.message || 'VoiceStudio connection failed. Check the local app and URL.',
       });
     } finally {
       setIsVerifying(false);
@@ -92,27 +76,27 @@ export const SettingsPivot: React.FC<SettingsPivotProps> = ({
 
   return (
     <div className="space-y-8 pb-28 px-4 max-w-3xl mx-auto select-none">
-      {/* 1. ELEVENLABS API KEY SECTION */}
+      {/* 1. VOICESTUDIO CONNECTION */}
       <div className="space-y-3">
         <div className="text-[11px] font-bold tracking-widest uppercase text-neutral-400 border-b border-neutral-800 pb-1">
-          ELEVENLABS API KEY
+          VOICESTUDIO LOCAL ENGINE
         </div>
 
         <p className="text-xs text-neutral-400 font-light">
-          Your key is stored locally in your device's secure browser sandbox. It is never sent to third-party servers.
+          Metro Reader connects directly to your running VoiceStudio backend. No hosted speech provider or API key is required.
         </p>
 
         <label className="p-4 bg-[#141414] border border-neutral-800 flex items-center justify-between gap-4 cursor-pointer">
           <div>
-            <div className="text-sm font-semibold text-white">Use ElevenLabs cloud voices</div>
+            <div className="text-sm font-semibold text-white">Use VoiceStudio local voices</div>
             <div className="text-xs text-neutral-400 mt-1">
-              Off uses the built-in device voice and avoids subscription voice restrictions.
+              Off uses the built-in device voice instead.
             </div>
           </div>
           <input
             type="checkbox"
-            checked={settings.useElevenLabs}
-            onChange={(e) => onUpdateSettings({ useElevenLabs: e.target.checked })}
+            checked={settings.useVoiceStudio}
+            onChange={(e) => onUpdateSettings({ useVoiceStudio: e.target.checked })}
             className="w-5 h-5 accent-cyan-400 shrink-0"
           />
         </label>
@@ -120,9 +104,9 @@ export const SettingsPivot: React.FC<SettingsPivotProps> = ({
         <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="password"
-            value={apiKeyInput}
-            onChange={(e) => setApiKeyInput(e.target.value)}
-            placeholder="sk_... or xi-api-key"
+            value={baseUrlInput}
+            onChange={(e) => setBaseUrlInput(e.target.value)}
+            placeholder="http://localhost:3900"
             className="flex-1 bg-[#141414] border border-neutral-800 text-white px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-white"
           />
           <button
@@ -131,7 +115,7 @@ export const SettingsPivot: React.FC<SettingsPivotProps> = ({
             className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-black transition-opacity disabled:opacity-50 shrink-0"
             style={{ backgroundColor: settings.accentColor }}
           >
-            {isVerifying ? 'Verifying...' : 'Save & Verify'}
+            {isVerifying ? 'Connecting...' : 'Save & Connect'}
           </button>
         </div>
 
@@ -152,11 +136,6 @@ export const SettingsPivot: React.FC<SettingsPivotProps> = ({
               )}
               <span>{verifyStatus.message}</span>
             </div>
-            {verifyStatus.charsRemaining !== undefined && (
-              <span className="font-mono text-[11px] opacity-80">
-                {verifyStatus.charsRemaining.toLocaleString()} / {verifyStatus.charLimit?.toLocaleString()} chars left
-              </span>
-            )}
           </div>
         )}
       </div>
@@ -295,7 +274,7 @@ export const SettingsPivot: React.FC<SettingsPivotProps> = ({
       {/* 6. ABOUT METRO READER */}
       <div className="p-4 bg-black border border-neutral-900 text-xs text-neutral-500 space-y-1">
         <div className="text-white font-semibold">Metro Reader · Minimalist Audiobook Studio</div>
-        <div>Built for iOS Safari, Android Chrome, and native APK packaging. Powered by ElevenLabs Neural TTS and Google Drive.</div>
+        <div>Built for iOS Safari, Android Chrome, and native APK packaging. Powered by local VoiceStudio and Google Drive.</div>
       </div>
     </div>
   );

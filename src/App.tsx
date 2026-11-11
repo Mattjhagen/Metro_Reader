@@ -17,7 +17,7 @@ import {
 } from './utils/db';
 import { parseBookFile } from './utils/documentParser';
 import { downloadCompleteAudiobookMp3, downloadAudiobookZip } from './utils/audioExporter';
-import { convertSingleChunk } from './utils/elevenLabsApi';
+import { convertSingleChunk } from './utils/voiceStudioApi';
 import { convertWithBuiltInVoice } from './utils/localTts';
 import { MetroStatusBar } from './components/MetroStatusBar';
 import { MetroPivotHeader } from './components/MetroPivotHeader';
@@ -121,12 +121,6 @@ export default function App() {
           loadSettings(),
         ]);
         if (isMounted) {
-          const envKey = (typeof process !== 'undefined' && process.env?.ELEVENLABS_API_KEY) || '';
-          if (envKey && !savedSettings.elevenLabsApiKey) {
-            savedSettings.elevenLabsApiKey = envKey;
-            await saveSettings(savedSettings);
-          }
-
           setBooks(savedBooks);
           setSettings(savedSettings);
           if (savedBooks.length > 0) {
@@ -274,13 +268,13 @@ export default function App() {
       setUploadNotice(`Synthesizing speech for "${ch.title}"...`);
       try {
         let newBlob: Blob;
-        if (settings.useElevenLabs && settings.elevenLabsApiKey.trim()) {
+        if (settings.useVoiceStudio) {
           newBlob = await convertSingleChunk(
             ch.text.slice(0, 1500),
             settings.selectedVoiceId,
             settings.selectedModelId,
             settings.voiceSettings,
-            settings.elevenLabsApiKey
+            settings.voiceStudioBaseUrl
           );
         } else {
           newBlob = await convertWithBuiltInVoice(ch.text);

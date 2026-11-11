@@ -137,7 +137,7 @@ export const GoogleDriveImportModal: React.FC<GoogleDriveImportModalProps> = ({
         {!token ? (
           <div className="py-8 text-center space-y-6">
             <p className="text-xs text-neutral-300 max-w-sm mx-auto leading-relaxed">
-              Connect your Google Drive account to import books directly into Metro Reader for ElevenLabs audiobook conversion.
+              Connect your Google Drive account to import books directly into Metro Reader for VoiceStudio audiobook conversion.
             </p>
 
             {/* Official Google Sign-in Button */}

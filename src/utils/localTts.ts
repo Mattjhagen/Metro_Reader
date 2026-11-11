@@ -1,4 +1,4 @@
-import { generateDemoAudioBlob } from './elevenLabsApi';
+import { generateDemoAudioBlob } from './voiceStudioApi';
 
 declare global {
   interface Window {

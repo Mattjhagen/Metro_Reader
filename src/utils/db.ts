@@ -1,16 +1,16 @@
 import { get, set } from 'idb-keyval';
 import { AppSettings, Book, Bookmark } from '../types';
-import { generateDemoAudioBlob } from './elevenLabsApi';
+import { DEFAULT_VOICESTUDIO_URL, generateDemoAudioBlob } from './voiceStudioApi';
 
 const BOOKS_STORAGE_KEY = 'metro_reader_audiobooks_v3';
 const SETTINGS_STORAGE_KEY = 'metro_reader_settings_v3';
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  elevenLabsApiKey: '',
-  useElevenLabs: false,
-  selectedVoiceId: '21m00Tcm4TlvDq8ikWAM', // Rachel
-  selectedVoiceName: 'Rachel',
-  selectedModelId: 'eleven_multilingual_v2',
+  voiceStudioBaseUrl: DEFAULT_VOICESTUDIO_URL,
+  useVoiceStudio: true,
+  selectedVoiceId: 'alloy',
+  selectedVoiceName: 'alloy',
+  selectedModelId: 'tts-1',
   voiceSettings: {
     stability: 0.5,
     similarity_boost: 0.75,
